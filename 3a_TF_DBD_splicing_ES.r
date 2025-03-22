@@ -14,10 +14,10 @@ save_dir <- '../results'
 input_dir <- '../data/PSI_data'
 input_dirx <- '../data/uniprot_Ensembl_Exon_mapx'
 output_dir <- '../data/uniprot_Ensembl_Exon_map_DBD_AS'
-if(dir.exists(output_dir)){
-    unlink(output_dir, recursive=TRUE)
-}
-dir.create(output_dir)
+# if(dir.exists(output_dir)){
+#     unlink(output_dir, recursive=TRUE)
+# }
+# dir.create(output_dir)
 
 fdr <- 0.05
 diff <- 0.1
@@ -95,7 +95,7 @@ for(k in 1:length(all_cancer)){
                     }
                     
                     if(wh1 & wh2){ 
-                        ##-- store the event id and the cancer type ---
+                        ##-- store the event id at the protein positions not included in the protein product of the sample with lower PSI----
                         as_event[h] <- tempz2$as_id
                         # print(paste0(j,':',i))
                     }
@@ -127,15 +127,7 @@ for(k in 1:length(all_cancer)){
 }
 
 
-
-
-
-
-###--- Work from here ---------------------------------------------
-
 ###--- ALTERNATIVE PROMOTER ---------------------------------------
-# all_filesx <- list.files(output_dir, pattern='*.txt', full.names=TRUE)
-
 for(k in 1:length(all_cancer)){
 
     temp <- data.table::fread(all_files[k], sep='\t')
@@ -148,7 +140,102 @@ for(k in 1:length(all_cancer)){
     all_symbolx <- gtools::mixedsort(unique(tempz$symbol))
 
     ##--- only the processed TFs --- 1-to-1 mapped transcripts to TFs
-    tid <- unlist(lapply(strsplit(basename(all_filesx), '[_]'),'[[',1))
+    tid <- unlist(lapply(strsplit(unlist(lapply(strsplit(basename(all_filesx), '[_]'),'[[',1)), '[.]'),'[[',1))
+    eid <- tf_ensemb_map[which(tf_ensemb_map$Uniprotswissprot %in% tid),]$Ensembl_gene_id
+    back_symbols <- tfs[which(tfs$Ensembl_Gene_ID %in% eid), ]$Gene_Symbol 
+    ## Out of 1639 curated TFs, 1460 are also present in the exon mapping file
+    ### So, the splice event information will be stored for these 1460 TFs
+    
+    all_symbol <- intersect(all_symbolx, back_symbols)
+    rest_symbols <- setdiff(back_symbols, all_symbol)
+
+    for(j in 1:length(all_symbol)){ ## for k=1, you can check for j=6 and i=2
+
+        tempz1 <- tempz[tempz$symbol == all_symbol[j], ]
+
+        ##-- read the uniprot ensembl map file of the gene --------
+        temp_uniprot <- tf_ensemb_map$Uniprotswissprot[ 
+        which(tf_ensemb_map$Ensembl_gene_id == tfs$Ensembl_Gene_ID[
+        which(tfs$Gene_Symbol == all_symbol[j])])]
+
+        temp_map <- data.table::fread(paste0(output_dir,'/',temp_uniprot,'_',all_cancer[k],'.txt'))
+
+        nt_start <- temp_map$NT1 ## for each AA position
+        nt_end <- temp_map$NT3
+        ##------------------------------------------------------------------------
+        as_event <- rep('-', length(temp_map[[1]]))
+        temp_cancer <- rep('-', length(temp_map[[1]]))
+
+        for(jj in 1:length(tempz1[[1]])){ ## for each splicing event
+
+            tempz2 <- tempz1[jj, ]
+            skipped_exons <- tempz2$exons ## the coding protein starts from this exon
+            ## meaning that the exons before this exon are missing from PSI sample
+            ## mark positions before this exon as affected by this splice event
+
+            for(i in 1:length(skipped_exons)){ ## for each skipped exon, store the ES event ID
+
+                tcga_temp <- tcga_map[tcga_map$Symbol == all_symbol[j], ]
+                tcga_temp <- tcga_temp[tcga_temp$Exon == skipped_exons[i], ]
+                temp_strand <- tcga_temp$Strand
+
+                for(h in 1:length(nt_start)){ ## for each dbd start
+                    ## dbd start and end should be within tcga_temp start and end, in order to consider the dbd to be alternatively spliced
+
+                    if(temp_strand == '-'){ ## if negative strand then genomic positions higher than the affect exon is not included
+                        ## meaning anything higher than the start nt position of the affected exon
+                        whx <- (nt_start[h] >= tcga_temp$Chr_Start)
+                    }else{
+                        whx <- (nt_start[h] <= tcga_temp$Chr_Start)
+                    }
+                    
+                    if(whx){ 
+                        ##-- store the event id at the protein positions not included in the protein product of the sample with higher PSI ----
+                        as_event[h] <- tempz2$as_id
+                    }
+                }
+
+            }
+        }
+
+        temp_map$AP <- as_event
+        data.table::fwrite(temp_map,paste0(output_dir,'/',temp_uniprot,'_',all_cancer[k],'.txt'), sep='\t', row.names=FALSE, quote=FALSE)
+
+    }
+
+    for(j in 1:length(rest_symbols)){
+
+        ##-- read the uniprot ensembl map file of the gene --------
+        temp_uniprot <- tf_ensemb_map$Uniprotswissprot[ 
+        which(tf_ensemb_map$Ensembl_gene_id == tfs$Ensembl_Gene_ID[
+        which(tfs$Gene_Symbol == rest_symbols[j])])]
+
+        temp_map <- data.table::fread(paste0(output_dir,'/',temp_uniprot,'_',all_cancer[k],'.txt'))
+        as_event <- rep('-', length(temp_map[[1]]))
+        temp_map$AP <- as_event
+        data.table::fwrite(temp_map,paste0(output_dir,'/',temp_uniprot,'_',all_cancer[k],'.txt'), sep='\t', row.names=FALSE, quote=FALSE)
+
+    }
+
+    cat('Cancer',k,'of',length(all_cancer),'done\n')
+}
+
+###--- Work from here ---------------------------------------------
+
+###--- ALTERNATIVE TERMINATOR ---------------------------------------
+for(k in 1:length(all_cancer)){
+
+    temp <- data.table::fread(all_files[k], sep='\t')
+    wh1 <- which(temp$FDR < fdr)
+    wh2 <- which(abs(temp$MEDIAN_DIFF) > diff)
+    wh <- intersect(wh1, wh2)
+    tempx <- temp[wh, ]
+    tempy <- tempx[which(toupper(tempx$symbol) %in% tfs$Gene_Symbol), ]
+    tempz <- tempy[tempy$splice_type == 'AT', ]
+    all_symbolx <- gtools::mixedsort(unique(tempz$symbol))
+
+    ##--- only the processed TFs --- 1-to-1 mapped transcripts to TFs
+    tid <- unlist(lapply(strsplit(unlist(lapply(strsplit(basename(all_filesx), '[_]'),'[[',1)), '[.]'),'[[',1))
     eid <- tf_ensemb_map[which(tf_ensemb_map$Uniprotswissprot %in% tid),]$Ensembl_gene_id
     back_symbols <- tfs[which(tfs$Ensembl_Gene_ID %in% eid), ]$Gene_Symbol 
     ## Out of 1639 curated TFs, 1460 are also present in the exon mapping file
@@ -206,7 +293,7 @@ for(k in 1:length(all_cancer)){
             }
         }
 
-        temp_map$AP <- as_event
+        temp_map$AT <- as_event
         data.table::fwrite(temp_map,paste0(output_dir,'/',temp_uniprot,'_',all_cancer[k],'.txt'), sep='\t', row.names=FALSE, quote=FALSE)
 
     }
@@ -218,9 +305,290 @@ for(k in 1:length(all_cancer)){
         which(tf_ensemb_map$Ensembl_gene_id == tfs$Ensembl_Gene_ID[
         which(tfs$Gene_Symbol == rest_symbols[j])])]
 
-        temp_map <- data.table::fread(paste0(input_dirx,'/',temp_uniprot,'.txt'))
+        temp_map <- data.table::fread(paste0(output_dir,'/',temp_uniprot,'_',all_cancer[k],'.txt'))
         as_event <- rep('-', length(temp_map[[1]]))
-        temp_map$AP <- as_event
+        temp_map$AT <- as_event
+        data.table::fwrite(temp_map,paste0(output_dir,'/',temp_uniprot,'_',all_cancer[k],'.txt'), sep='\t', row.names=FALSE, quote=FALSE)
+
+    }
+
+    cat('Cancer',k,'of',length(all_cancer),'done\n')
+}
+
+###--- ALTERNATIVE DONOR ---------------------------------------
+for(k in 1:length(all_cancer)){
+
+    temp <- data.table::fread(all_files[k], sep='\t')
+    wh1 <- which(temp$FDR < fdr)
+    wh2 <- which(abs(temp$MEDIAN_DIFF) > diff)
+    wh <- intersect(wh1, wh2)
+    tempx <- temp[wh, ]
+    tempy <- tempx[which(toupper(tempx$symbol) %in% tfs$Gene_Symbol), ]
+    tempz <- tempy[tempy$splice_type == 'AD', ]
+    all_symbolx <- gtools::mixedsort(unique(tempz$symbol))
+
+    ##--- only the processed TFs --- 1-to-1 mapped transcripts to TFs
+    tid <- unlist(lapply(strsplit(unlist(lapply(strsplit(basename(all_filesx), '[_]'),'[[',1)), '[.]'),'[[',1))
+    eid <- tf_ensemb_map[which(tf_ensemb_map$Uniprotswissprot %in% tid),]$Ensembl_gene_id
+    back_symbols <- tfs[which(tfs$Ensembl_Gene_ID %in% eid), ]$Gene_Symbol 
+    ## Out of 1639 curated TFs, 1460 are also present in the exon mapping file
+    ### So, the splice event information will be stored for these 1460 TFs
+    
+    all_symbol <- intersect(all_symbolx, back_symbols)
+    rest_symbols <- setdiff(back_symbols, all_symbol)
+
+    for(j in 1:length(all_symbol)){ ## for k=1, you can check for j=6 and i=2
+
+        tempz1 <- tempz[tempz$symbol == all_symbol[j], ]
+
+        ##-- read the uniprot ensembl map file of the gene --------
+        temp_uniprot <- tf_ensemb_map$Uniprotswissprot[ 
+        which(tf_ensemb_map$Ensembl_gene_id == tfs$Ensembl_Gene_ID[
+        which(tfs$Gene_Symbol == all_symbol[j])])]
+
+        temp_map <- data.table::fread(paste0(output_dir,'/',temp_uniprot,'_',all_cancer[k],'.txt'))
+
+        nt_start <- temp_map$NT1 ## for each AA position
+        nt_end <- temp_map$NT3
+        ##------------------------------------------------------------------------
+        as_event <- rep('-', length(temp_map[[1]]))
+        temp_cancer <- rep('-', length(temp_map[[1]]))
+
+        for(jj in 1:length(tempz1[[1]])){ ## for each splicing event
+
+            tempz2 <- tempz1[jj, ]
+            skipped_exons <- tempz2$exons
+
+            for(i in 1:length(skipped_exons)){ ## for each skipped exon, store the ES event ID
+
+                tcga_temp <- tcga_map[tcga_map$Symbol == all_symbol[j], ]
+                tcga_temp <- tcga_temp[tcga_temp$Exon == skipped_exons[i], ]
+                temp_strand <- tcga_temp$Strand
+
+                for(h in 1:length(nt_start)){ ## for each dbd start
+                    ## dbd start and end should be within tcga_temp start and end, in order to consider the dbd to be alternatively spliced
+
+                    if(temp_strand == '-'){
+                        wh1 <- (nt_start[h] >= tcga_temp$Chr_Stop)
+                        wh2 <- (nt_end[h] <= tcga_temp$Chr_Start)
+                    }else{
+                        wh1 <- (nt_start[h] >= tcga_temp$Chr_Start)
+                        wh2 <- (nt_end[h] <= tcga_temp$Chr_Stop)
+                    }
+                    
+                    if(wh1 & wh2){ 
+                        ##-- store the event id and the cancer type ---
+                        as_event[h] <- tempz2$as_id
+                        # print(paste0(j,':',i))
+                    }
+                }
+
+            }
+        }
+
+        temp_map$AD <- as_event
+        data.table::fwrite(temp_map,paste0(output_dir,'/',temp_uniprot,'_',all_cancer[k],'.txt'), sep='\t', row.names=FALSE, quote=FALSE)
+
+    }
+
+    for(j in 1:length(rest_symbols)){
+
+        ##-- read the uniprot ensembl map file of the gene --------
+        temp_uniprot <- tf_ensemb_map$Uniprotswissprot[ 
+        which(tf_ensemb_map$Ensembl_gene_id == tfs$Ensembl_Gene_ID[
+        which(tfs$Gene_Symbol == rest_symbols[j])])]
+
+        temp_map <- data.table::fread(paste0(output_dir,'/',temp_uniprot,'_',all_cancer[k],'.txt'))
+        as_event <- rep('-', length(temp_map[[1]]))
+        temp_map$AD <- as_event
+        data.table::fwrite(temp_map,paste0(output_dir,'/',temp_uniprot,'_',all_cancer[k],'.txt'), sep='\t', row.names=FALSE, quote=FALSE)
+
+    }
+
+    cat('Cancer',k,'of',length(all_cancer),'done\n')
+}
+
+
+###--- ALTERNATIVE ACCEPTOR ---------------------------------------
+for(k in 1:length(all_cancer)){
+
+    temp <- data.table::fread(all_files[k], sep='\t')
+    wh1 <- which(temp$FDR < fdr)
+    wh2 <- which(abs(temp$MEDIAN_DIFF) > diff)
+    wh <- intersect(wh1, wh2)
+    tempx <- temp[wh, ]
+    tempy <- tempx[which(toupper(tempx$symbol) %in% tfs$Gene_Symbol), ]
+    tempz <- tempy[tempy$splice_type == 'AA', ]
+    all_symbolx <- gtools::mixedsort(unique(tempz$symbol))
+
+    ##--- only the processed TFs --- 1-to-1 mapped transcripts to TFs
+    tid <- unlist(lapply(strsplit(unlist(lapply(strsplit(basename(all_filesx), '[_]'),'[[',1)), '[.]'),'[[',1))
+    eid <- tf_ensemb_map[which(tf_ensemb_map$Uniprotswissprot %in% tid),]$Ensembl_gene_id
+    back_symbols <- tfs[which(tfs$Ensembl_Gene_ID %in% eid), ]$Gene_Symbol 
+    ## Out of 1639 curated TFs, 1460 are also present in the exon mapping file
+    ### So, the splice event information will be stored for these 1460 TFs
+    
+    all_symbol <- intersect(all_symbolx, back_symbols)
+    rest_symbols <- setdiff(back_symbols, all_symbol)
+
+    for(j in 1:length(all_symbol)){ ## for k=1, you can check for j=6 and i=2
+
+        tempz1 <- tempz[tempz$symbol == all_symbol[j], ]
+
+        ##-- read the uniprot ensembl map file of the gene --------
+        temp_uniprot <- tf_ensemb_map$Uniprotswissprot[ 
+        which(tf_ensemb_map$Ensembl_gene_id == tfs$Ensembl_Gene_ID[
+        which(tfs$Gene_Symbol == all_symbol[j])])]
+
+        temp_map <- data.table::fread(paste0(output_dir,'/',temp_uniprot,'_',all_cancer[k],'.txt'))
+
+        nt_start <- temp_map$NT1 ## for each AA position
+        nt_end <- temp_map$NT3
+        ##------------------------------------------------------------------------
+        as_event <- rep('-', length(temp_map[[1]]))
+        temp_cancer <- rep('-', length(temp_map[[1]]))
+
+        for(jj in 1:length(tempz1[[1]])){ ## for each splicing event
+
+            tempz2 <- tempz1[jj, ]
+            skipped_exons <- tempz2$exons
+
+            for(i in 1:length(skipped_exons)){ ## for each skipped exon, store the ES event ID
+
+                tcga_temp <- tcga_map[tcga_map$Symbol == all_symbol[j], ]
+                tcga_temp <- tcga_temp[tcga_temp$Exon == skipped_exons[i], ]
+                temp_strand <- tcga_temp$Strand
+
+                for(h in 1:length(nt_start)){ ## for each dbd start
+                    ## dbd start and end should be within tcga_temp start and end, in order to consider the dbd to be alternatively spliced
+
+                    if(temp_strand == '-'){
+                        wh1 <- (nt_start[h] >= tcga_temp$Chr_Stop)
+                        wh2 <- (nt_end[h] <= tcga_temp$Chr_Start)
+                    }else{
+                        wh1 <- (nt_start[h] >= tcga_temp$Chr_Start)
+                        wh2 <- (nt_end[h] <= tcga_temp$Chr_Stop)
+                    }
+                    
+                    if(wh1 & wh2){ 
+                        ##-- store the event id and the cancer type ---
+                        as_event[h] <- tempz2$as_id
+                        # print(paste0(j,':',i))
+                    }
+                }
+
+            }
+        }
+
+        temp_map$AA <- as_event
+        data.table::fwrite(temp_map,paste0(output_dir,'/',temp_uniprot,'_',all_cancer[k],'.txt'), sep='\t', row.names=FALSE, quote=FALSE)
+
+    }
+
+    for(j in 1:length(rest_symbols)){
+
+        ##-- read the uniprot ensembl map file of the gene --------
+        temp_uniprot <- tf_ensemb_map$Uniprotswissprot[ 
+        which(tf_ensemb_map$Ensembl_gene_id == tfs$Ensembl_Gene_ID[
+        which(tfs$Gene_Symbol == rest_symbols[j])])]
+
+        temp_map <- data.table::fread(paste0(output_dir,'/',temp_uniprot,'_',all_cancer[k],'.txt'))
+        as_event <- rep('-', length(temp_map[[1]]))
+        temp_map$AA <- as_event
+        data.table::fwrite(temp_map,paste0(output_dir,'/',temp_uniprot,'_',all_cancer[k],'.txt'), sep='\t', row.names=FALSE, quote=FALSE)
+
+    }
+
+    cat('Cancer',k,'of',length(all_cancer),'done\n')
+}
+
+
+###--- MUTUALLY EXCLUSIVE ---------------------------------------
+for(k in 1:length(all_cancer)){
+
+    temp <- data.table::fread(all_files[k], sep='\t')
+    wh1 <- which(temp$FDR < fdr)
+    wh2 <- which(abs(temp$MEDIAN_DIFF) > diff)
+    wh <- intersect(wh1, wh2)
+    tempx <- temp[wh, ]
+    tempy <- tempx[which(toupper(tempx$symbol) %in% tfs$Gene_Symbol), ]
+    tempz <- tempy[tempy$splice_type == 'AA', ]
+    all_symbolx <- gtools::mixedsort(unique(tempz$symbol))
+
+    ##--- only the processed TFs --- 1-to-1 mapped transcripts to TFs
+    tid <- unlist(lapply(strsplit(unlist(lapply(strsplit(basename(all_filesx), '[_]'),'[[',1)), '[.]'),'[[',1))
+    eid <- tf_ensemb_map[which(tf_ensemb_map$Uniprotswissprot %in% tid),]$Ensembl_gene_id
+    back_symbols <- tfs[which(tfs$Ensembl_Gene_ID %in% eid), ]$Gene_Symbol 
+    ## Out of 1639 curated TFs, 1460 are also present in the exon mapping file
+    ### So, the splice event information will be stored for these 1460 TFs
+    
+    all_symbol <- intersect(all_symbolx, back_symbols)
+    rest_symbols <- setdiff(back_symbols, all_symbol)
+
+    for(j in 1:length(all_symbol)){ ## for k=1, you can check for j=6 and i=2
+
+        tempz1 <- tempz[tempz$symbol == all_symbol[j], ]
+
+        ##-- read the uniprot ensembl map file of the gene --------
+        temp_uniprot <- tf_ensemb_map$Uniprotswissprot[ 
+        which(tf_ensemb_map$Ensembl_gene_id == tfs$Ensembl_Gene_ID[
+        which(tfs$Gene_Symbol == all_symbol[j])])]
+
+        temp_map <- data.table::fread(paste0(output_dir,'/',temp_uniprot,'_',all_cancer[k],'.txt'))
+
+        nt_start <- temp_map$NT1 ## for each AA position
+        nt_end <- temp_map$NT3
+        ##------------------------------------------------------------------------
+        as_event <- rep('-', length(temp_map[[1]]))
+        temp_cancer <- rep('-', length(temp_map[[1]]))
+
+        for(jj in 1:length(tempz1[[1]])){ ## for each splicing event
+
+            tempz2 <- tempz1[jj, ]
+            skipped_exons <- tempz2$exons
+
+            for(i in 1:length(skipped_exons)){ ## for each skipped exon, store the ES event ID
+
+                tcga_temp <- tcga_map[tcga_map$Symbol == all_symbol[j], ]
+                tcga_temp <- tcga_temp[tcga_temp$Exon == skipped_exons[i], ]
+                temp_strand <- tcga_temp$Strand
+
+                for(h in 1:length(nt_start)){ ## for each dbd start
+                    ## dbd start and end should be within tcga_temp start and end, in order to consider the dbd to be alternatively spliced
+
+                    if(temp_strand == '-'){
+                        wh1 <- (nt_start[h] >= tcga_temp$Chr_Stop)
+                        wh2 <- (nt_end[h] <= tcga_temp$Chr_Start)
+                    }else{
+                        wh1 <- (nt_start[h] >= tcga_temp$Chr_Start)
+                        wh2 <- (nt_end[h] <= tcga_temp$Chr_Stop)
+                    }
+                    
+                    if(wh1 & wh2){ 
+                        ##-- store the event id and the cancer type ---
+                        as_event[h] <- tempz2$as_id
+                        # print(paste0(j,':',i))
+                    }
+                }
+
+            }
+        }
+
+        temp_map$AA <- as_event
+        data.table::fwrite(temp_map,paste0(output_dir,'/',temp_uniprot,'_',all_cancer[k],'.txt'), sep='\t', row.names=FALSE, quote=FALSE)
+
+    }
+
+    for(j in 1:length(rest_symbols)){
+
+        ##-- read the uniprot ensembl map file of the gene --------
+        temp_uniprot <- tf_ensemb_map$Uniprotswissprot[ 
+        which(tf_ensemb_map$Ensembl_gene_id == tfs$Ensembl_Gene_ID[
+        which(tfs$Gene_Symbol == rest_symbols[j])])]
+
+        temp_map <- data.table::fread(paste0(output_dir,'/',temp_uniprot,'_',all_cancer[k],'.txt'))
+        as_event <- rep('-', length(temp_map[[1]]))
+        temp_map$AA <- as_event
         data.table::fwrite(temp_map,paste0(output_dir,'/',temp_uniprot,'_',all_cancer[k],'.txt'), sep='\t', row.names=FALSE, quote=FALSE)
 
     }
@@ -238,12 +606,7 @@ for(k in 1:length(all_cancer)){
 
 
 
-
-
-
-
-
-##--- Number of TFs with DBDs affected by ES splicing events -------------------------------
+##--- Number of TFs with DBDs affected by ES/AP splicing events -------------------------------
 tfs_curated <- data.table::fread('../data/filtered_TFs_curated.txt', sep='\t')
 ## 1340 out of the 1639 curated TFs have at least one known DBD information ---
 
@@ -258,7 +621,7 @@ for(k in 1:length(all_filesx)){
     if(length(wh) != 0){
 
         tid <- strsplit(basename(all_filesx[k]), '[.]')[[1]][1]
-        eid <- tf_ensemb_map[which(tf_ensemb_map$uniprotswissprot == tid),]$ensembl_gene_id
+        eid <- tf_ensemb_map[which(tf_ensemb_map$Uniprotswissprot == tid),]$Ensembl_gene_id
         TFs_with_DBD <- union(TFs_with_DBD, tfs_curated[which(tfs$Ensembl_Gene_ID == eid), ]$Gene_Symbol)
     }
 
@@ -278,7 +641,7 @@ for(k in 1:length(all_cancer)){
     wh <- intersect(wh1, wh2)
     tempx <- temp[wh, ]
     tempy <- tempx[which(toupper(tempx$symbol) %in% tfs$Gene_Symbol), ]
-    tempz <- tempy[tempy$splice_type == 'ES', ]
+    tempz <- tempy[tempy$splice_type %in% c('ES','AP'), ]
     all_tfs <- unique(tempz$symbol)
 
     ##-- which of the Tfs have at least one DBD info in the uniprot ----
@@ -328,7 +691,8 @@ ggsave(p,filename=paste0(save_dir,"/Events_affecting_TFs_with_DBDs.png"),width=3
 ##----------- Plot the number of TFs where the ES event removes a DBD -------
 
 num_TFs_with_affected_DBD_pt <- c()
-num_TFs_with_affected_DBD <- c()
+num_TFs_with_affected_DBD_ES <- c()
+num_TFs_with_affected_DBD_AP <- c()
 num_events_affecting_TFs_with_DBD <- c()
 TFs_with_affected_DBD <- list()
 
@@ -336,11 +700,13 @@ for(k in 1:length(all_cancer)){
 
     all_files <- list.files(output_dir, pattern=paste0('*',all_cancer[k],'.txt'), full.names=TRUE)
     count <- 0
+    countp <- 0
     all_filesx <- c()
     events <- c()
     for(j in 1:length(all_files)){
         temp <- data.table::fread(all_files[j])
         temp1 <- temp[temp$ES != '-', ]
+        temp2 <- temp[temp$AP != '-', ]
         if(nrow(temp1) > 0){
             if(length(which(temp1$DBD != '-')) > 0){
                 count <- count+1
@@ -348,10 +714,19 @@ for(k in 1:length(all_cancer)){
                 events <- c(events, setdiff(unique(temp$ES), '-'))
             }
         }
+
+        if(nrow(temp2) > 0){
+            if(length(which(temp2$DBD != '-')) > 0){
+                countp <- countp+1
+                all_filesx <- c(all_filesx, all_files[j])
+                events <- c(events, setdiff(unique(temp$AP), '-'))
+            }
+        }
     }
 
     num_TFs_with_affected_DBD_pt <- c(num_TFs_with_affected_DBD_pt, (count/num_tfs[k])*100)
-    num_TFs_with_affected_DBD <- c(num_TFs_with_affected_DBD, count)
+    num_TFs_with_affected_DBD_ES <- c(num_TFs_with_affected_DBD_ES, count)
+    num_TFs_with_affected_DBD_AP <- c(num_TFs_with_affected_DBD_AP, countp)
     TFs_with_affected_DBD[[k]] <- unlist(lapply(strsplit(basename(all_filesx), '[_]'),'[[',1))
     num_events_affecting_TFs_with_DBD <- c(num_events_affecting_TFs_with_DBD, length(events))
 
