@@ -90,7 +90,7 @@ for(k in 1:length(allfiles)){
 }
 
 uniprot_name_id_map <- data.frame(Name=uniprot_name, ID=uniprot_id)
-
+data.table::fwrite(uniprot_name_id_map,'../data/uniprot_name_id_map.txt',sep='\t', row.names=FALSE, quote=FALSE)
 
 ##---Ensembl mapping -------------------------------------------------------
 substrRight <- function(x, n){
@@ -441,9 +441,14 @@ for(k in 1:length(transcript_uni_ids)){
 
 
 ##----------- Add DBD information for the TFs from UniProt files ------------------------
-
+# Check that it doesn't match any non-number
+numbers_only <- function(x) !grepl("\\D", x)
+data.table::fwrite(uniprot_name_id_map,'../data/uniprot_name_id_map.txt',sep='\t', row.names=FALSE, quote=FALSE)
+uniprot_name_id_map <- data.table::fread('../data/uniprot_name_id_map.txt')
 allfiles <- list.files(store_dir,full.names=TRUE)
-counter <- 0
+DBDs <- c()
+DBDs_list <- vector(mode = "list", length = length(allfiles))
+
 for(k in 1:length(allfiles)){
 
     temp_uniprot <- strsplit(basename(allfiles[k]), '[.]')[[1]][1]
@@ -459,53 +464,106 @@ for(k in 1:length(allfiles)){
     dna_bind_pos2 <- which(temp_uniprot_file %like% 'ZN_FING')
     dna_bind_pos <- union(dna_bind_pos1, dna_bind_pos2)
     dna_bind <- rep('-', length(temp_file[[1]]))
-
+    temp_binds <- c()
     ## loop for DNA_BIND and ZN_FING---
-    counter_tag <- 0
     if(length(dna_bind_pos) != 0){
-        if(counter_tag == 0){
-            counter <- counter+1
-            counter_tag <- 1
-        }
         for(j in 1:length(dna_bind_pos)){
             temp_dna <- strsplit(temp_uniprot_file[dna_bind_pos[j]],"\\s+")[[1]][3]
             dna_bseq <- seq(as.numeric(strsplit(temp_dna, '[..]')[[1]][1]), as.numeric(strsplit(temp_dna, '[..]')[[1]][3]))
-            dna_bind_domain <- gsub('\\"',"",strsplit(strsplit(temp_uniprot_file[dna_bind_pos[j]+1],"\\s+")[[1]][2],'=')[[1]][2])
+            # dna_bind_domain <- gsub('\\"',"",strsplit(strsplit(temp_uniprot_file[dna_bind_pos[j]+1],"\\s+")[[1]][2],'=')[[1]][2])
+            dna_bind_domain <- gsub('\\"',"",strsplit(temp_uniprot_file[dna_bind_pos[j]+1],"=")[[1]][2])
+            dna_bind_domain <- strsplit(dna_bind_domain,'[;]')[[1]][1]
+            if(is.na(dna_bind_domain)){ ## sometimes the domain info after the DNA_BIND line is missing, which gives NA
+                next
+            }
+            if(dna_bind_domain %like% 'ECO:'){ ### These are not "proper" DNA binding domains
+                next
+            }
+            dnaxx <- strsplit(dna_bind_domain,'[ ]')
+            dnaxxf <- dnaxx[[1]][length(dnaxx[[1]])]
+            loop <- length(dnaxx[[1]])-1
+            if(numbers_only(dnaxxf)){
+                dnaxxp <- dnaxx[[1]][1]
+                if(loop > 1){
+                    for(hh in 2:loop){
+                        dnaxxp <- paste(dnaxxp,dnaxx[[1]][hh])
+                    }
+                } 
+                dna_bind_domain <- dnaxxp
+            }
             wh <- which(temp_file$UNIPROT_SEQ_NUM %in% dna_bseq)
             dna_bind[wh] <- dna_bind_domain
+            DBDs <- c(DBDs, dna_bind_domain)
+            temp_binds <- c(temp_binds, dna_bind_domain)
         }
     }
 
     ##--- loop for bHLH ------
-    to_consider_domains <- c('bHLH','bZIP')
+    to_consider_domains <- c('bHLH','bZIP','MADS-box')
     dna_bind_pos <- which(temp_uniprot_file %like% 'DOMAIN')
 
     if(length(dna_bind_pos) != 0) {
 
         for(j in 1:length(dna_bind_pos)){
-            dna_bind_domain <- gsub('\\"',"",strsplit(strsplit(temp_uniprot_file[dna_bind_pos[j]+1],"\\s+")[[1]][2],'=')[[1]][2])
+            # dna_bind_domain <- gsub('\\"',"",strsplit(strsplit(temp_uniprot_file[dna_bind_pos[j]+1],"\\s+")[[1]][2],'=')[[1]][2])
+            dna_bind_domain <- gsub('\\"',"",strsplit(temp_uniprot_file[dna_bind_pos[j]+1],"=")[[1]][2])
+            dna_bind_domain <- strsplit(dna_bind_domain,'[;]')[[1]][1]
             if(dna_bind_domain %in% to_consider_domains){
-                if(counter_tag == 0){
-                    counter <- counter+1
-                    counter_tag <- 1
-                }
                 temp_dna <- strsplit(temp_uniprot_file[dna_bind_pos[j]],"\\s+")[[1]][3]
                 dna_bseq <- seq(as.numeric(strsplit(temp_dna, '[..]')[[1]][1]), as.numeric(strsplit(temp_dna, '[..]')[[1]][3]))
                 wh <- which(temp_file$UNIPROT_SEQ_NUM %in% dna_bseq)
                 dna_bind[wh] <- dna_bind_domain
+                DBDs <- c(DBDs, dna_bind_domain)
+                temp_binds <- c(temp_binds, dna_bind_domain)
             } 
         }
     }
     
     temp_file$DBD <- dna_bind
-
+    DBDs_list[[k]] <- temp_binds
     data.table::fwrite(temp_file, paste0(store_dir,'/',temp_uniprot,'.txt'), row.names=FALSE, sep='\t', quote=FALSE)
 
     cat('TF',k,'of',length(allfiles),'done\n')
 
 }
 
-## 1594 out of 2460 TFs have DBD info ------------------------------------------------------------
+##-- 1564 out of 2460 TFs have DBD info ------------------------------------------------------------
+dbds <- plyr::count(DBDs)
+
+
+##--- plots for summary of DBDs -----
+DBDs_list_uniq <- lapply(DBDs_list, function(x) unique(x))
+
+mlen1 <- lengths(DBDs_list)
+mlen2 <- lengths(DBDs_list_uniq)
+
+wh1 <- which(mlen1 == 1) ## 663 TFs with a single DBD
+
+wh2a <- which(mlen2 == 1)
+wh2b <- which(mlen1 > 1)
+wh2 <- intersect(wh2a, wh2b) ## 720 TFs with multiple DBDs of the same type (Homotypic DBDs)
+
+tempxx <- unlist(DBDs_list_uniq[wh2])
+c2h2 <- which(tempxx == 'C2H2-type')
+wh2a <- wh2[c2h2] ## 622 TFs with multiple DBDs of C2H2-type (Homotypic DBDs)
+
+
+
+## 98 TFs with multiple DBDs of the same type other than C2H2 (Homotypic DBDs)
+wh2b <- setdiff(wh2, wh2a) 
+homo <- DBDs_list[wh2b]
+homo_len <- data.frame(DBD=unlist(lapply(homo, function(x) unique(x))), NUM=lengths(homo))
+homo_dbd <- unique(homo_len$DBD)
+max_freq <- c()
+for(k in 1:length(homo_dbd)){
+    temp <- homo_len[homo_len$DBD == homo_dbd[k], ]
+    max_freq <- c(max_freq, max(temp$NUM))
+}
+homo_lenx <- data.frame(DBD=homo_dbd, MAX_NUM=max_freq)
+
+
+## 181 TFs with multiple DBD types (Heterotypic DBDs)
+wh3 <- which(mlen2 > 1) 
 
 
 
