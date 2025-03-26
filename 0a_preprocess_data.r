@@ -31,6 +31,7 @@ uniprot_map <- data.table::fread('../data/uniprotkb_reviewed_true_AND_model_orga
 
 
 ## Gene regulatory network ---------------------------------
+## TFLink: An integrated gateway to access transcription factor-target gene interactions for multiple species
 ## Detected via small-scale experiments --> more confident ---
 xx <- "TFLink_Homo_sapiens_interactions_SS_simpleFormat_v1.0.tsv"
 system(paste0("wget -O ../data/",xx," https://cdn.netbiol.org/tflink/download_files/",xx))

@@ -12,7 +12,7 @@ library(seqinr)
 
 save_dir <- '../results'
 input_dir <- '../data/PSI_data'
-input_dirx <- '../data/uniprot_Ensembl_Exon_mapx'
+input_dirx <- '../data/uniprot_Ensembl_Exon_map'
 output_dir <- '../data/uniprot_Ensembl_Exon_map_DBD_AS'
 # if(dir.exists(output_dir)){
 #     unlink(output_dir, recursive=TRUE)

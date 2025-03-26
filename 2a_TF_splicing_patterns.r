@@ -37,6 +37,14 @@ ES <- c()
 ME <- c()
 RI <- c()
 
+AAn <- c()
+ADn <- c()
+APn <- c()
+ATn <- c()
+ESn <- c()
+MEn <- c()
+RIn <- c()
+
 for(k in 1:length(all_cancer)){
 
     temp <- data.table::fread(all_files[k], sep='\t')
@@ -46,9 +54,13 @@ for(k in 1:length(all_cancer)){
     wh2 <- which(abs(temp$MEDIAN_DIFF) > diff)
     wh <- intersect(wh1, wh2)
     tempx <- temp[wh, ]
-    num_sig_events_pos <- c(num_sig_events_pos, length(which(tempx$MEDIAN_DIFF > 0)))
-    num_sig_events_neg <- c(num_sig_events_neg, length(which(tempx$MEDIAN_DIFF < 0)))
-    temp_count <- plyr::count(tempx$splice_type)
+    tempx_pos <- tempx[tempx$MEDIAN_DIFF > 0, ]
+    tempx_neg <- tempx[tempx$MEDIAN_DIFF < 0, ]
+
+    num_sig_events_pos <- c(num_sig_events_pos, length(tempx_pos[[1]]))
+    num_sig_events_neg <- c(num_sig_events_neg, length(tempx_neg[[1]]))
+    
+    temp_count <- plyr::count(tempx_pos$splice_type)
     temp_count$prct <- signif((temp_count$freq/sum(temp_count$freq))*100, 3)
     AA <- c(AA, ifelse(length(which(temp_count$x == 'AA') != 0),temp_count$prct[which(temp_count$x == 'AA')],0))
     AD <- c(AD, ifelse(length(which(temp_count$x == 'AD') != 0),temp_count$prct[which(temp_count$x == 'AD')],0))
@@ -58,27 +70,39 @@ for(k in 1:length(all_cancer)){
     ME <- c(ME, ifelse(length(which(temp_count$x == 'ME') != 0),temp_count$prct[which(temp_count$x == 'ME')],0))
     RI <- c(RI, ifelse(length(which(temp_count$x == 'RI') != 0),temp_count$prct[which(temp_count$x == 'RI')],0))
 
+    temp_count <- plyr::count(tempx_neg$splice_type)
+    temp_count$prct <- signif((temp_count$freq/sum(temp_count$freq))*100, 3)
+    AAn <- c(AAn, ifelse(length(which(temp_count$x == 'AA') != 0),temp_count$prct[which(temp_count$x == 'AA')],0))
+    ADn <- c(ADn, ifelse(length(which(temp_count$x == 'AD') != 0),temp_count$prct[which(temp_count$x == 'AD')],0))
+    APn <- c(APn, ifelse(length(which(temp_count$x == 'AP') != 0),temp_count$prct[which(temp_count$x == 'AP')],0))
+    ATn <- c(ATn, ifelse(length(which(temp_count$x == 'AT') != 0),temp_count$prct[which(temp_count$x == 'AT')],0))
+    ESn <- c(ESn, ifelse(length(which(temp_count$x == 'ES') != 0),temp_count$prct[which(temp_count$x == 'ES')],0))
+    MEn <- c(MEn, ifelse(length(which(temp_count$x == 'ME') != 0),temp_count$prct[which(temp_count$x == 'ME')],0))
+    RIn <- c(RIn, ifelse(length(which(temp_count$x == 'RI') != 0),temp_count$prct[which(temp_count$x == 'RI')],0))
+
 }
 
 ##--- plot the number of splicing events -----------------
-pdata <- data.frame(cancer=all_cancer, count=num_sig_events_pos+num_sig_events_neg)
-p <- ggplot(pdata, aes(cancer, count)) + 
-geom_bar(stat="identity",position=position_dodge())+
+pdata1 <- data.frame(cancer=all_cancer, count=num_sig_events_pos, flag=rep('High in cancer'))
+pdata2 <- data.frame(cancer=all_cancer, count=num_sig_events_neg, flag=rep('Low in cancer'))
+pdata <- rbind(pdata1,pdata2)
+p <- ggplot(pdata, aes(cancer, count, fill=flag)) + 
+geom_bar(stat="identity",position="stack")+
 theme(legend.text=element_text(size=12))
 basesize <- 12
+maxv <- max(pdata1$count+pdata2$count)
 p <- p + theme_bw(base_size = basesize * 0.8) +
 scale_x_discrete(name="Cancer type") + 
-scale_y_continuous(name="# of significant splicing events", limits=c(0,(max(pdata$count))+1000)) +
-geom_text(aes(label=count), position=position_dodge(width=0.9),hjust=0, vjust=0, angle=75, size=3)+
-# scale_fill_manual(values=c('#a6cee3','#1f78b4','#b2df8a','#33a02c','#fb9a99','#ffff99','#fdbf6f','#ff7f00','#cab2d6','#6a3d9a','#e31a1c','#b15928','black','#9e0142','#053061'))+
+scale_y_continuous(name="# of significant splicing events", limits=c(0,maxv+10)) +
+# geom_text(aes(label=count), position=position_dodge(width=0.9),hjust=0, vjust=0, angle=75, size=3)+
 theme(axis.text.x = element_text(size = basesize * 0.6, angle = 60, hjust = 0.5,vjust=0.5, colour = "black"),
 axis.text.y = element_text(size = basesize * 0.6, angle = 0, hjust = 0.5,vjust=0.5, colour = "black"), 
 strip.text = element_text(size = basesize * 0.8), axis.title=element_text(basesize * 0.8))+
-guides(fill='none')#guide_legend(title="Cancer type",ncol=2))
-ggsave(p,filename=paste0(save_dir,"/Sig_events.png"),width=3.5, height=3, dpi=400)
+guides(fill=guide_legend(title="Percent Spliced In",ncol=1))#guides(fill='none')#
+ggsave(p,filename=paste0(save_dir,"/Sig_events.png"),width=5.5, height=3, dpi=400)
 
 ##--- plot the number of splicing events of different types -----------------
-pData <- data.frame(A=AA, B=AD, C=AP, D=AT, E=ES, F=ME, G=RI, X=num_sig_events_pos+num_sig_events_neg, Cancer=all_cancer)
+pData <- data.frame(A=AA, B=AD, C=AP, D=AT, E=ES, F=ME, G=RI, X=num_sig_events_pos, Cancer=all_cancer)
 pData1 <- reshape2::melt(pData,id=c('Cancer','X'))
 pData1$variable <- factor(pData1$variable, levels=c("A", "B", "C", "D", "E","F","G","X"))  # setting level order
 basesize <- 8
@@ -94,7 +118,28 @@ theme_bw()+theme(axis.text.x = element_text(size = 1*basesize, angle = 60, vjust
     panel.grid.major = element_blank(),panel.grid.minor = element_blank(),
     axis.line = element_line(colour = "black"))+
 guides(fill=guide_legend(title="Alternative splicing type"))
-ggsave(ppx,filename=paste0(save_dir, "/Sig_events_types.png"),width=7, height=3, dpi=400)
+ggsave(ppx,filename=paste0(save_dir, "/Sig_events_types_pos.png"),width=7, height=3, dpi=400)
+
+
+pData <- data.frame(A=AAn, B=ADn, C=APn, D=ATn, E=ESn, F=MEn, G=RIn, X=num_sig_events_neg, Cancer=all_cancer)
+pData1 <- reshape2::melt(pData,id=c('Cancer','X'))
+pData1$variable <- factor(pData1$variable, levels=c("A", "B", "C", "D", "E","F","G","X"))  # setting level order
+basesize <- 8
+ppx <- ggplot(data = pData1, aes(x=Cancer, y=value, fill=variable, group=Cancer)) + geom_bar(stat="identity")+
+geom_text(aes(label=X, y=100),size=2.5, vjust=0.5, hjust=0, angle=60)+
+scale_y_continuous(limits=c(0,110), breaks = seq(0, 100, by = 10))+
+xlab("Cancer type")+ylab("% of splicing events")+
+scale_fill_manual(labels=c("A" = "Alternate Acceptor", 
+    "B"="Alternate Donor", "C"="Alternate Promoter","D"="Alternate Terminator","E"="Exon skip","F"="Mutually Exclusive Exons", "G"="Retained Intron"), 
+values=c('#1b9e77','#d95f02','#7570b3','#e7298a','#66a61e','#e6ab02','#a6761d'))+
+theme_bw()+theme(axis.text.x = element_text(size = 1*basesize, angle = 60, vjust=1, hjust=1, colour = "black"),
+    axis.text.y = element_text(size = 1*basesize, angle = 0, colour = "black"),
+    panel.grid.major = element_blank(),panel.grid.minor = element_blank(),
+    axis.line = element_line(colour = "black"))+
+guides(fill=guide_legend(title="Alternative splicing type"))
+ggsave(ppx,filename=paste0(save_dir, "/Sig_events_types_neg.png"),width=7, height=3, dpi=400)
+
+
 
 ##---- Correlation with the numbers of perturbed events detected in existing studies
 ## Study: Alternative splicing perturbation landscape identifies RNA binding proteins as potential therapeutic targets in cancer, Molecular Therapy - Nucleic Acids, 2021
@@ -164,8 +209,11 @@ ggsave(p,filename=paste0(save_dir,"/Sig_events_existing_Zhang.png"),width=4.5, h
 
 
 ##--- splicing events affecting TFs ----------------------------------------------------------------------
-num_tf_events <- c()
-events_tf <- list()
+# num_tf_events <- c()
+events_tf_pos <- list()
+events_tf_neg <- list()
+num_sig_events_pos <- c()
+num_sig_events_neg <- c()
 AA <- c()
 AD <- c()
 AP <- c()
@@ -173,6 +221,14 @@ AT <- c()
 ES <- c()
 ME <- c()
 RI <- c()
+
+AAn <- c()
+ADn <- c()
+APn <- c()
+ATn <- c()
+ESn <- c()
+MEn <- c()
+RIn <- c()
 
 for(k in 1:length(all_cancer)){
 
@@ -182,10 +238,18 @@ for(k in 1:length(all_cancer)){
     wh <- intersect(wh1, wh2)
     tempx <- temp[wh, ]
     whx <- which(toupper(tempx$symbol) %in% tfs$Gene_Symbol) ## number of AS events concerning TFs
-    num_tf_events <- c(num_tf_events, length(whx))
     tempy <- tempx[whx,]
-    events_tf[[k]] <- tempy$as_id
-    temp_count <- plyr::count(tempy$splice_type)
+    tempy_pos <- tempy[tempy$MEDIAN_DIFF > 0, ]
+    tempy_neg <- tempy[tempy$MEDIAN_DIFF < 0, ]
+
+    # num_tf_events <- c(num_tf_events, length(whx))
+    events_tf_pos[[k]] <- tempy_pos$as_id
+    events_tf_neg[[k]] <- tempy_pos$as_id
+
+    num_sig_events_pos <- c(num_sig_events_pos, length(tempy_pos[[1]]))
+    num_sig_events_neg <- c(num_sig_events_neg, length(tempy_neg[[1]]))
+    
+    temp_count <- plyr::count(tempy_pos$splice_type)
     temp_count$prct <- signif((temp_count$freq/sum(temp_count$freq))*100, 3)
     AA <- c(AA, ifelse(length(which(temp_count$x == 'AA') != 0),temp_count$prct[which(temp_count$x == 'AA')],0))
     AD <- c(AD, ifelse(length(which(temp_count$x == 'AD') != 0),temp_count$prct[which(temp_count$x == 'AD')],0))
@@ -195,28 +259,40 @@ for(k in 1:length(all_cancer)){
     ME <- c(ME, ifelse(length(which(temp_count$x == 'ME') != 0),temp_count$prct[which(temp_count$x == 'ME')],0))
     RI <- c(RI, ifelse(length(which(temp_count$x == 'RI') != 0),temp_count$prct[which(temp_count$x == 'RI')],0))
 
+    temp_count <- plyr::count(tempy_neg$splice_type)
+    temp_count$prct <- signif((temp_count$freq/sum(temp_count$freq))*100, 3)
+    AAn <- c(AAn, ifelse(length(which(temp_count$x == 'AA') != 0),temp_count$prct[which(temp_count$x == 'AA')],0))
+    ADn <- c(ADn, ifelse(length(which(temp_count$x == 'AD') != 0),temp_count$prct[which(temp_count$x == 'AD')],0))
+    APn <- c(APn, ifelse(length(which(temp_count$x == 'AP') != 0),temp_count$prct[which(temp_count$x == 'AP')],0))
+    ATn <- c(ATn, ifelse(length(which(temp_count$x == 'AT') != 0),temp_count$prct[which(temp_count$x == 'AT')],0))
+    ESn <- c(ESn, ifelse(length(which(temp_count$x == 'ES') != 0),temp_count$prct[which(temp_count$x == 'ES')],0))
+    MEn <- c(MEn, ifelse(length(which(temp_count$x == 'ME') != 0),temp_count$prct[which(temp_count$x == 'ME')],0))
+    RIn <- c(RIn, ifelse(length(which(temp_count$x == 'RI') != 0),temp_count$prct[which(temp_count$x == 'RI')],0))
+    
 }
 
 ##--- plot the number of splicing events affecting TFs -----------------
-pdata <- data.frame(cancer=all_cancer, count=num_tf_events)
-p <- ggplot(pdata, aes(cancer, count)) + 
-geom_bar(stat="identity",position=position_dodge())+
+pdata1 <- data.frame(cancer=all_cancer, count=num_sig_events_pos, flag=rep('High in cancer'))
+pdata2 <- data.frame(cancer=all_cancer, count=num_sig_events_neg, flag=rep('Low in cancer'))
+pdata <- rbind(pdata1,pdata2)
+p <- ggplot(pdata, aes(cancer, count, fill=flag)) + 
+geom_bar(stat="identity",position="stack")+
 theme(legend.text=element_text(size=12))
 basesize <- 12
+maxv <- max(pdata1$count+pdata2$count)
 p <- p + theme_bw(base_size = basesize * 0.8) +
 scale_x_discrete(name="Cancer type") + 
-scale_y_continuous(name="# of significant AS events", limits=c(0,1000)) +
-geom_text(aes(label=count), position=position_dodge(width=0.9),hjust=0, vjust=0, angle=75, size=3)+
-# scale_fill_manual(values=c('#a6cee3','#1f78b4','#b2df8a','#33a02c','#fb9a99','#ffff99','#fdbf6f','#ff7f00','#cab2d6','#6a3d9a','#e31a1c','#b15928','black','#9e0142','#053061'))+
+scale_y_continuous(name="# of significant splicing events", limits=c(0,maxv+10)) +
+# geom_text(aes(label=count), position=position_dodge(width=0.9),hjust=0, vjust=0, angle=75, size=3)+
 theme(axis.text.x = element_text(size = basesize * 0.6, angle = 60, hjust = 0.5,vjust=0.5, colour = "black"),
 axis.text.y = element_text(size = basesize * 0.6, angle = 0, hjust = 0.5,vjust=0.5, colour = "black"), 
 strip.text = element_text(size = basesize * 0.8), axis.title=element_text(basesize * 0.8))+
-guides(fill='none')#guide_legend(title="Cancer type",ncol=2))
-ggsave(p,filename=paste0(save_dir,"/Sig_events_TFs.png"),width=3.5, height=3, dpi=400)
+guides(fill=guide_legend(title="Percent Spliced In",ncol=1))#guides(fill='none')#
+ggsave(p,filename=paste0(save_dir,"/Sig_events_TFs.png"),width=5.5, height=3, dpi=400)
 
 
 ##--- plot the number of splicing events of different types affecting TFs -----------------
-pData <- data.frame(A=AA, B=AD, C=AP, D=AT, E=ES, F=ME, G=RI, X=num_tf_events, Cancer=all_cancer)
+pData <- data.frame(A=AA, B=AD, C=AP, D=AT, E=ES, F=ME, G=RI, X=num_sig_events_pos, Cancer=all_cancer)
 
 pData1 <- reshape2::melt(pData,id=c('Cancer','X'))
 pData1$variable <- factor(pData1$variable, levels=c("A", "B", "C", "D", "E","F","G","X"))  # setting level order
@@ -233,7 +309,30 @@ theme_bw()+theme(axis.text.x = element_text(size = 1*basesize, angle = 60, vjust
     panel.grid.major = element_blank(),panel.grid.minor = element_blank(),
     axis.line = element_line(colour = "black"))+
 guides(fill=guide_legend(title="Alternative splicing type"))
-ggsave(ppx,filename=paste0(save_dir, "/Sig_events_types_TFs.png"),width=7, height=3, dpi=400)
+ggsave(ppx,filename=paste0(save_dir, "/Sig_events_types_TFs_pos.png"),width=7, height=3, dpi=400)
+
+
+pData <- data.frame(A=AAn, B=ADn, C=APn, D=ATn, E=ESn, F=MEn, G=RIn, X=num_sig_events_neg, Cancer=all_cancer)
+
+pData1 <- reshape2::melt(pData,id=c('Cancer','X'))
+pData1$variable <- factor(pData1$variable, levels=c("A", "B", "C", "D", "E","F","G","X"))  # setting level order
+basesize <- 8
+ppx <- ggplot(data = pData1, aes(x=Cancer, y=value, fill=variable, group=Cancer)) + geom_bar(stat="identity")+
+geom_text(aes(label=X, y=100),size=2.5, vjust=0.5, hjust=0, angle=60)+
+scale_y_continuous(limits=c(0,110), breaks = seq(0, 100, by = 10))+
+xlab("Cancer type")+ylab("% of significant AS events \naffecting transcription factors")+
+scale_fill_manual(labels=c("A" = "Alternate Acceptor", 
+    "B"="Alternate Donor", "C"="Alternate Promoter","D"="Alternate Terminator","E"="Exon skip","F"="Mutually Exclusive Exons", "G"="Retained Intron"), 
+values=c('#1b9e77','#d95f02','#7570b3','#e7298a','#66a61e','#e6ab02','#a6761d'))+
+theme_bw()+theme(axis.text.x = element_text(size = 1*basesize, angle = 60, vjust=1, hjust=1, colour = "black"),
+    axis.text.y = element_text(size = 1*basesize, angle = 0, colour = "black"),
+    panel.grid.major = element_blank(),panel.grid.minor = element_blank(),
+    axis.line = element_line(colour = "black"))+
+guides(fill=guide_legend(title="Alternative splicing type"))
+ggsave(ppx,filename=paste0(save_dir, "/Sig_events_types_TFs_neg.png"),width=7, height=3, dpi=400)
+
+
+##--- work from here -----
 
 ##--- Correlation with the number of samples --------------------
 pData$Samples <- samples
@@ -365,8 +464,11 @@ ggsave(ppx,filename=paste0(save_dir, "/Surv_types_TFs_surv.png"),width=7, height
 
 
 ##-------- Pairwise overlap of slicing events affecting TFs across cancer types --------------------------------------------
-TF_splicing_events <- list()
-background_as <- c()
+TF_splicing_events_pos <- list()
+TF_splicing_events_neg <- list()
+background_as_pos <- c()
+background_as_neg <- c() #length(which(tempy$MEDIAN_DIFF < 0)))
+
 for(k in 1:length(all_cancer)){
     temp <- data.table::fread(all_files[k], sep='\t')
     wh1 <- which(temp$FDR < fdr)
@@ -375,69 +477,138 @@ for(k in 1:length(all_cancer)){
     tempx <- temp[wh, ]
     whx <- which(toupper(tempx$symbol) %in% tfs$Gene_Symbol) ## number of AS events concerning TFs
     tempy <- tempx[whx,]
-    TF_splicing_events[[k]] <- tempy$as_id
-    background_as <- union(background_as, tempy$as_id)
+    tempy_pos <- tempy[tempy$MEDIAN_DIFF > 0,]
+    tempy_neg <- tempy[tempy$MEDIAN_DIFF < 0,]
+
+    TF_splicing_events_pos[[k]] <- tempy_pos$as_id
+    background_as_pos <- union(background_as_pos, tempy_pos$as_id)
+
+    TF_splicing_events_neg[[k]] <- tempy_neg$as_id
+    background_as_neg <- union(background_as_neg, tempy_pos$as_id)
 }
 
-# ##--- figure for the overlap ---------------------------
-# c1 <- c()
-# c2 <- c()
-# oval <- c()
-# pval <- c()
-# pvalu <- c()
-# loop1 <- length(all_cancer)-1
-# loop2 <- length(all_cancer)
+##--- figure for the overlap ---------------------------
+c1 <- c()
+c2 <- c()
+oval <- c()
+pval <- c()
+pvalu <- c()
+loop1 <- length(all_cancer)-1
+loop2 <- length(all_cancer)
 
-# for(ov1 in 1:loop1){
-#     m <- ov1+1
-#     for(ov2 in m:loop2){
-#         e1 <- length(TF_splicing_events[[ov1]])
-#         e2 <- length(TF_splicing_events[[ov2]])
-#         c1 <- c(c1, paste0(all_cancer[ov1],' (', e1,')'))
-#         c2 <- c(c2, paste0(all_cancer[ov2],' (', e2,')'))
-#         inter_e <- intersect(TF_splicing_events[[ov1]], TF_splicing_events[[ov2]])
-#         oval <- c(oval, length(inter_e))
+for(ov1 in 1:loop1){
+    m <- ov1+1
+    for(ov2 in m:loop2){
+        e1 <- length(TF_splicing_events_pos[[ov1]])
+        e2 <- length(TF_splicing_events_pos[[ov2]])
+        c1 <- c(c1, paste0(all_cancer[ov1],' (', e1,')'))
+        c2 <- c(c2, paste0(all_cancer[ov2],' (', e2,')'))
+        inter_e <- intersect(TF_splicing_events_pos[[ov1]], TF_splicing_events_pos[[ov2]])
+        oval <- c(oval, length(inter_e))
 
-#         hyp <- phyper(length(inter_e)-1,e1,length(background_as)-e1,e2,lower.tail = FALSE)
-#         hyp <- signif(hyp, digits=3)
-#         pval <- c(pval, hyp)
+        hyp <- phyper(length(inter_e)-1,e1,length(background_as_pos)-e1,e2,lower.tail = FALSE)
+        hyp <- signif(hyp, digits=3)
+        pval <- c(pval, hyp)
 
-#         ## under representation
-#         hyp <- phyper(length(inter_e),e1,length(background_as)-e1,e2,lower.tail = TRUE)
-#         hyp <- signif(hyp, digits=3)
-#         pvalu <- c(pvalu, hyp)
-#     # }
-#     }
-# }
+        ## under representation
+        hyp <- phyper(length(inter_e),e1,length(background_as_pos)-e1,e2,lower.tail = TRUE)
+        hyp <- signif(hyp, digits=3)
+        pvalu <- c(pvalu, hyp)
+    # }
+    }
+}
 
-# qval <- p.adjust(pval, 'fdr')
-# qvalu <- p.adjust(pvalu, 'fdr')
-# qvalx <- rep('Expected by chance',length(pval))
-# for(i in 1:length(pval)){
-#     if(qval[i] < fdr){
-#         qvalx[i] <- 'Significantly \nmore overlapping'
-#     }
-#     if(qvalu[i] < fdr){
-#         qvalx[i] <- 'Significantly \nless overlapping'
-#     }
-# }
+qval <- p.adjust(pval, 'fdr')
+qvalu <- p.adjust(pvalu, 'fdr')
+qvalx <- rep('Expected by chance',length(pval))
+for(i in 1:length(pval)){
+    if(qval[i] < fdr){
+        qvalx[i] <- 'Significantly \nmore overlapping'
+    }
+    if(qvalu[i] < fdr){
+        qvalx[i] <- 'Significantly \nless overlapping'
+    }
+}
 
 
-# pdata <- data.frame(c1=c1, c2=c2, val=oval, pval=qvalx, qval=qval)
+pdata <- data.frame(c1=c1, c2=c2, val=oval, pval=qvalx, qval=qval)
 
-# cols <- c('#377eb8','#4daf4a','#e41a1c')#rev(brewer.pal(3,"Spectral"))
-# p <- ggplot(pdata, aes(c1, c2)) + geom_tile(aes(fill = pval),colour = "white")+
-#   theme(legend.text=element_text(size=8))+scale_fill_manual(values=cols,drop=FALSE)
-# basesize <- 8
-# p <- p + theme_grey(base_size = basesize) + labs(x = "Cancer type", y = "Cancer type") +
-#   scale_y_discrete() +
-#   scale_x_discrete()+coord_fixed()+
-#   guides(fill=guide_legend(title="Q-value"))+
-#   geom_text(data=pdata,aes(y=c2,label=val),size=1)+
-#   theme(axis.text.x = element_text(size = basesize * 0.8,angle = 90, hjust = 0,vjust=0.5, colour = "black"),
-#     axis.text.y = element_text(size = basesize * 0.8,angle = 0, hjust = 0,vjust=0.5, colour = "black"))
-#   # +guides(fill='none')
-# ggsave(p,filename=paste0(save_dir,'/AS_events_TFs_overlap.png'),width=4, height=2.5, dpi=400)
+cols <- c('#377eb8','#4daf4a','#e41a1c')#rev(brewer.pal(3,"Spectral"))
+p <- ggplot(pdata, aes(c1, c2)) + geom_tile(aes(fill = pval),colour = "white")+
+  theme(legend.text=element_text(size=8))+scale_fill_manual(values=cols,drop=FALSE)
+basesize <- 8
+p <- p + theme_grey(base_size = basesize) + labs(x = "Cancer type", y = "Cancer type") +
+  scale_y_discrete() +
+  scale_x_discrete()+coord_fixed()+
+  guides(fill=guide_legend(title=""))+
+  geom_text(data=pdata,aes(y=c2,label=val),size=1)+
+  theme(axis.text.x = element_text(size = basesize * 0.8,angle = 90, hjust = 0,vjust=0.5, colour = "black"),
+    axis.text.y = element_text(size = basesize * 0.8,angle = 0, hjust = 0,vjust=0.5, colour = "black"))
+  # +guides(fill='none')
+ggsave(p,filename=paste0(save_dir,'/Sig_events_TFs_overlap_pos.png'),width=4, height=2.5, dpi=400)
+
+
+c1 <- c()
+c2 <- c()
+oval <- c()
+pval <- c()
+pvalu <- c()
+loop1 <- length(all_cancer)-1
+loop2 <- length(all_cancer)
+
+for(ov1 in 1:loop1){
+    m <- ov1+1
+    for(ov2 in m:loop2){
+        e1 <- length(TF_splicing_events_neg[[ov1]])
+        e2 <- length(TF_splicing_events_neg[[ov2]])
+        c1 <- c(c1, paste0(all_cancer[ov1],' (', e1,')'))
+        c2 <- c(c2, paste0(all_cancer[ov2],' (', e2,')'))
+        inter_e <- intersect(TF_splicing_events_neg[[ov1]], TF_splicing_events_neg[[ov2]])
+        oval <- c(oval, length(inter_e))
+
+        hyp <- phyper(length(inter_e)-1,e1,length(background_as_neg)-e1,e2,lower.tail = FALSE)
+        hyp <- signif(hyp, digits=3)
+        pval <- c(pval, hyp)
+
+        ## under representation
+        hyp <- phyper(length(inter_e),e1,length(background_as_neg)-e1,e2,lower.tail = TRUE)
+        hyp <- signif(hyp, digits=3)
+        pvalu <- c(pvalu, hyp)
+    # }
+    }
+}
+
+qval <- p.adjust(pval, 'fdr')
+qvalu <- p.adjust(pvalu, 'fdr')
+qvalx <- rep('Expected by chance',length(pval))
+for(i in 1:length(pval)){
+    if(qval[i] < fdr){
+        qvalx[i] <- 'Significantly \nmore overlapping'
+    }
+    if(qvalu[i] < fdr){
+        qvalx[i] <- 'Significantly \nless overlapping'
+    }
+}
+
+
+pdata <- data.frame(c1=c1, c2=c2, val=oval, pval=qvalx, qval=qval)
+
+cols <- c('#377eb8','#e41a1c')#rev(brewer.pal(3,"Spectral"))
+p <- ggplot(pdata, aes(c1, c2)) + geom_tile(aes(fill = pval),colour = "white")+
+  theme(legend.text=element_text(size=8))+scale_fill_manual(values=cols,drop=FALSE)
+basesize <- 8
+p <- p + theme_grey(base_size = basesize) + labs(x = "Cancer type", y = "Cancer type") +
+  scale_y_discrete() +
+  scale_x_discrete()+coord_fixed()+
+  guides(fill=guide_legend(title=""))+
+  geom_text(data=pdata,aes(y=c2,label=val),size=1)+
+  theme(axis.text.x = element_text(size = basesize * 0.8,angle = 90, hjust = 0,vjust=0.5, colour = "black"),
+    axis.text.y = element_text(size = basesize * 0.8,angle = 0, hjust = 0,vjust=0.5, colour = "black"))
+  # +guides(fill='none')
+ggsave(p,filename=paste0(save_dir,'/Sig_events_TFs_overlap_neg.png'),width=4, height=2.5, dpi=400)
+
+
+
 
 
 
