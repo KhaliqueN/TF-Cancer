@@ -251,6 +251,11 @@ if(!dir.exists(save_dirx)){
     dir.create(save_dirx)
 }
 
+save_diry <- '../../../public_data/TCGA_normalized_counts'
+if(!dir.exists(save_diry)){
+    dir.create(save_diry)
+}
+
 for(k in 1:length(manifests)){
 
     temp_file <- as.data.frame(data.table::fread(gene_counts[k]))
@@ -283,9 +288,17 @@ for(k in 1:length(manifests)){
 
     ##--- Prefiltering ------------
     # dim(x.deseq2)
-    x.deseq2.filt <- x.deseq2[rowSums(DESeq2::counts(x.deseq2)) > 5, ] ## At least 5 reads in all samples
+    x.deseq2.filt <- x.deseq2[rowSums(DESeq2::counts(x.deseq2)) > 10, ] ## At least 10 reads in all samples
     # dim(x.deseq2.filt)
     ##-----------------------------
+    
+    ##---- normalized counts -----
+    x.deseq2.filt.normalized <- DESeq2::estimateSizeFactors(x.deseq2.filt)
+    x.deseq2.filt.normalized.counts <- as.data.frame(counts(x.deseq2.filt.normalized, normalized=TRUE))
+    x.deseq2.filt.normalized.counts$Ensembl_gene_id <- rownames(x.deseq2.filt.normalized.counts)
+    data.table::fwrite(x.deseq2.filt.normalized.counts, paste0(save_diry,"/",substr(basename(manifests[k]),1,4),"_normalized_counts.txt"), sep='\t', row.names=FALSE, quote=FALSE)
+
+    ##----------------------------
 
     ##-- set the reference to control ----
     x.deseq2.filt$group <- relevel(x.deseq2.filt$group, ref='Control')
@@ -316,13 +329,3 @@ for(k in 1:length(manifests)){
     cat('Cancer',k,'of', length(manifests),'done\n')
 
 }
-
-
-# ##---- Download all ensembl data -------------------------
-# # wget -O result.txt 'http://www.ensembl.org/biomart/martservice?query=<?xml version="1.0" encoding="UTF-8"?> <!DOCTYPE Query><Query  virtualSchemaName = "default" formatter = "TSV" header = "0" uniqueRows = "0" count = "" datasetConfigVersion = "0.6" ><Dataset name = "hsapiens_gene_ensembl" interface = "default" ><Attribute name = "ensembl_gene_id" /><Attribute name = "ensembl_gene_id_version" /><Attribute name = "ensembl_transcript_id" /> <Attribute name = "ensembl_transcript_id_version" /><Attribute name = "external_gene_name" /><Attribute name = "ensembl_exon_id" /><Attribute name = "external_synonym" /><Attribute name = "chromosome_name" /><Attribute name = "strand" /><Attribute name = "start_position" /><Attribute name = "end_position" /><Attribute name = "hgnc_symbol" /><Attribute name = "uniprotswissprot" /><Attribute name = "transcript_biotype" /></Dataset></Query>'
-# temp_file <- data.table::fread('result.txt')
-# colnames(temp_file) <- c('Ensembl_gene_id','Ensembl_gene_id_version','Ensembl_transcript_id','Ensembl_transcript_id_version',
-#     'External_gene_name','Ensembl_exon_id','External_synonym','Chromosome_name', 'Strand','CHR_start','CHR_end','HGNC_symbol',
-#     'Uniprotswissprot','Transcript_biotype')
-
-# data.table::fwrite(temp_file, '../data/ensembl_name_map.txt', sep='\t', row.names=FALSE, quote=FALSE)
