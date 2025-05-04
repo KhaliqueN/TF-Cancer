@@ -1,6 +1,7 @@
 ##############################################################################################
 # Purpose: Detect differentially expressed genes in each cancer type considering samples
 # present in both the TCGA and splice data
+# Should be adjusted to use hg19 build --> currently its hg38  --> Should it be?
 ##############################################################################################
 
 rm(list=ls())
@@ -118,7 +119,7 @@ if(!dir.exists(expr_dir)){
     dir.create(expr_dir)
 }
 
-##---- downloaded files 
+##---- downloaded files -------------------------
 dwnld_dirs <- basename(list.files(expr_dir))
 dwnld_files <- substr(basename(list.files(expr_dir, pattern='*.tsv.partial', recursive=TRUE)),1,36)
 
@@ -238,6 +239,15 @@ for(k in 1:length(manifests)){
 
 #####-------------------------------------------------------------------------------------------------------------------
 
+exons_f <- data.table::fread('../data/Ensembl_exons.txt', header=TRUE)
+exons_f$len <- abs(exons_f$V5 - exons_f$V4)+1
+all_genes <- unique(exons_f$gene_id)
+lens <- c()
+for(k in 1:length(all_genes)){
+    lens <- c(lens, sum(exons_f[exons_f$gene_id == all_genes[k], ]$len))
+    cat('Gene',k, 'of',length(all_genes),'done\n')
+}
+exlen <- data.frame(Gene_Symbol=all_genes, Length=lens)
 
 ##--------- DIfferential Gene Expression -------------------------------------------------------------------------------
 gene_counts <- list.files(out_dir,pattern='*.txt', full.names=TRUE)
@@ -256,12 +266,29 @@ if(!dir.exists(save_diry)){
     dir.create(save_diry)
 }
 
+save_dirf <- '../../../public_data/TCGA_FPKM_counts'
+if(!dir.exists(save_dirf)){
+    dir.create(save_dirf)
+}
+
 for(k in 1:length(manifests)){
 
     temp_file <- as.data.frame(data.table::fread(gene_counts[k]))
-    temp_genes <- temp_file[[1]]
-    temp_file <- temp_file[,-1]
-    rownames(temp_file) <- temp_genes
+    tgenes <- unlist(lapply(strsplit(temp_file[[1]],'[.]'),'[[',1))
+    wh <- which(tgenes %in% all_genes)
+    tgenes <- tgenes[wh]
+    temp_file1 <- temp_file[wh, ]
+    gnc <- plyr::count(tgenes)
+    wh <- which(gnc$freq > 1)
+    g2c <- setdiff(tgenes, gnc$x[wh])
+    wh <- which(tgenes %in% g2c)
+    tgenes <- tgenes[wh]
+    temp_file1 <- temp_file[wh, ]
+    temp_file1$Gene_Symbol <- tgenes
+    temp_genes <- temp_file1[[1]]
+    temp_file1 <- temp_file1[,-1]
+    rownames(temp_file1) <- temp_genes
+    temp_file <- temp_file1
 
     last_flag <- substr(colnames(temp_file), 14,15)
     n_col1 <- which(last_flag == '11') ## control samples
@@ -288,25 +315,33 @@ for(k in 1:length(manifests)){
 
     ##--- Prefiltering ------------
     # dim(x.deseq2)
-    x.deseq2.filt <- x.deseq2[rowSums(DESeq2::counts(x.deseq2)) > 10, ] ## At least 10 reads in all samples
+    x.deseq2.filt <- x.deseq2#[rowSums(DESeq2::counts(x.deseq2)) > 10, ] ## At least 10 reads in all samples
     # dim(x.deseq2.filt)
     ##-----------------------------
+    ##-- set the reference to control ----
+    x.deseq2.filt$group <- relevel(x.deseq2.filt$group, ref='Control')
+    ##-----------------------------------
     
     ##---- normalized counts -----
     x.deseq2.filt.normalized <- DESeq2::estimateSizeFactors(x.deseq2.filt)
     x.deseq2.filt.normalized.counts <- as.data.frame(counts(x.deseq2.filt.normalized, normalized=TRUE))
     x.deseq2.filt.normalized.counts$Ensembl_gene_id <- rownames(x.deseq2.filt.normalized.counts)
+
+    wh <- which(exlen$Gene_Symbol %in% x.deseq2.filt.normalized.counts$Ensembl_gene_id)
+    exlenx <- exlen[wh, ]
+    exlenx <- exlenx[match(x.deseq2.filt.normalized.counts$Ensembl_gene_id, exlenx$Gene_Symbol),]
+    mcols(x.deseq2.filt.normalized)$basepairs <- exlenx$Length
+    fpkm_data <- fpkm(x.deseq2.filt.normalized)
+    # x.deseq2.filt.fpkm.counts <- as.data.frame(counts(fpkm_data, normalized=TRUE))
+    # x.deseq2.filt.fpkm.counts$Ensembl_gene_id <- rownames(x.deseq2.filt.fpkm.counts)
+
     data.table::fwrite(x.deseq2.filt.normalized.counts, paste0(save_diry,"/",substr(basename(manifests[k]),1,4),"_normalized_counts.txt"), sep='\t', row.names=FALSE, quote=FALSE)
+    data.table::fwrite(fpkm_data, paste0(save_dirf,"/",substr(basename(manifests[k]),1,4),"_fpkm_counts.txt"), sep='\t', row.names=FALSE, quote=FALSE)
 
     ##----------------------------
+    x.deseq2.filt.normalized.de <- DESeq2::DESeq(x.deseq2.filt.normalized)
 
-    ##-- set the reference to control ----
-    x.deseq2.filt$group <- relevel(x.deseq2.filt$group, ref='Control')
-    ##-----------------------------------
-
-    x.deseq2.filt.de <- DESeq2::DESeq(x.deseq2.filt)
-
-    res <- DESeq2::results(x.deseq2.filt.de)
+    res <- DESeq2::results(x.deseq2.filt.normalized.de)
 
     ##----- save and plot the results ------------------------
     deseq2ResDF <- as.data.frame(res)
@@ -329,3 +364,5 @@ for(k in 1:length(manifests)){
     cat('Cancer',k,'of', length(manifests),'done\n')
 
 }
+
+

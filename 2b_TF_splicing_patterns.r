@@ -255,23 +255,83 @@ guides(fill='none')#guide_legend(title="Cancer type",ncol=2))
 ggsave(p,filename=paste0(save_dir,"/Unique_sig_events_TFs_genes.png"),width=3.5, height=3, dpi=400)
 
 
+##-- KEGG pathways analysis of the affected genes ---------------------------------------------------------------
+tf_ensemb_map <- as.data.frame(data.table::fread('../data/TF_ensembl_uniprot.txt', sep='\t'))
 
-##--- Overlap with oncogenes and cancer suppressor genes ----------------
-cancergenes <- data.table::fread('../data/cancerGeneList.tsv')
-## keep genes with at least two evidence
-wh <- which(cancergenes$`# of occurrence within resources (Column J-P)` > 1)
-cancergenes <- cancergenes[wh, ]
-oncogenes <- cancergenes[cancergenes$`Is Oncogene` == 'Yes', ]
-supgenes <- cancergenes[cancergenes$`Is Tumor Suppressor Gene` == 'Yes', ]
-tf_onco <- vector(mode = "list", length = length(all_cancer))
-tf_sup <- vector(mode = "list", length = length(all_cancer))
+##---- Using TFLink ----
+diff_expr_files <- gtools::mixedsort(list.files('../data/Diff_expr', full.names=TRUE))
+ensembl_gene_map <- data.table::fread('../data/ensembl_name_map.txt')
 
-for(k in 1:length(all_cancer)){ ## overlap with the TFs in multiple cancer types
+##--- grn without direction downloaded from here: https://tflink.net/download/
+grn <- as.data.frame(data.table::fread('../data/TFLink_Homo_sapiens_interactions_SS_simpleFormat_v1.0.tsv'))
+grn_filt <- grn[grn$`Name.TF` %in% tfs$Gene_Symbol,]
+##--- 14,439 edges ----
 
-    tf_onco[[k]] <- intersect(oncogenes$`Hugo Symbol`, num_events_combs[[k]])
-    tf_sup[[k]] <- intersect(supgenes$`Hugo Symbol`, num_events_combs[[k]])
+all_kegg <- data.table::fread('../data/all_human_pathways.txt', sep='\t')
+colnames(all_kegg) <- c('Ensembl_gene_id','Uniprotswissprot','Entrez_id','Go_id','Pathways_name')
+all_path <- plyr::count(all_kegg$Go_id) ## 347 total KEGG pathways
+wh_path <- unique(all_path[which(all_path$freq > 2), ]$x)
+allkegg <- all_kegg[all_kegg$Go_id %in% wh_path, ] ### all pathways remain
+bgSize <- length(unique(allkegg$Uniprotswissprot))
+pval <- c()
+tcancer <- c()
+Kterm <- c()
+Ktermn <- c()
+num_gene <- c()
 
+
+tempg <- unique(num_events_combs[[10]]) ## TFs in at least 10 cancer types
+temp_gene <- unique(tf_ensemb_map[tf_ensemb_map$HGNC_symbol %in% tempg, ]$Uniprotswissprot)
+temp_gene <- grn_filt[grn_filt$`UniprotID.TF` %in% temp_gene, ]$`UniprotID.Target`
+num_gene <- length(temp_gene)
+
+temp_kegg <- allkegg[allkegg$Uniprotswissprot %in% temp_gene, ]
+sampleSize <- length(unique(temp_kegg$Uniprotswissprot))
+tempid <- unique(temp_kegg$Go_id)
+
+for(j in 1:length(tempid)){
+    setA <- unique(allkegg[allkegg$Go_id == tempid[j], ]$Uniprotswissprot)
+    setB <- unique(temp_kegg[temp_kegg$Go_id == tempid[j], ]$Uniprotswissprot)
+    ## hypergeometric test
+    hyp <- phyper(length(setB)-1,length(setA),bgSize-length(setA), sampleSize,lower.tail = FALSE)
+    pval <- c(pval, hyp)
+    Kterm <- c(Kterm, tempid[j])
+    Ktermn <- c(Ktermn, unique(temp_kegg[temp_kegg$Go_id == tempid[j], ]$Pathways_name))
 }
+
+ktd <- data.frame(Kterm, Ktermn, pval)
+ktd$FDR <- p.adjust(ktd$pval, 'fdr')
+ktdx <- ktd[ktd$FDR < 0.05, ]
+
+#-- save excel file ---
+wb1 <- openxlsx::createWorkbook(paste0(save_dir,'/KEGG_enrichment_10cancer.xlsx'))
+temp1a <- ktdx[order(ktdx$FDR), ]
+colnames(temp1a) <- c('KEGG ID', 'KEGG pathway name', 'pvalue', 'FDR')
+openxlsx::addWorksheet(wb1, sheetName = 'Atleast 10 cancer')
+openxlsx::writeData(wb1, sheet = 'Atleast 10 cancer', temp1a)
+openxlsx::saveWorkbook(wb1, paste0(save_dir,'/KEGG_enrichment_10cancer.xlsx'), overwrite = T)
+
+
+
+
+
+
+# ##--- Overlap with oncogenes and cancer suppressor genes ----------------
+# cancergenes <- data.table::fread('../data/cancerGeneList.tsv')
+# ## keep genes with at least two evidence
+# wh <- which(cancergenes$`# of occurrence within resources (Column J-P)` > 1)
+# cancergenes <- cancergenes[wh, ]
+# oncogenes <- cancergenes[cancergenes$`Is Oncogene` == 'Yes', ]
+# supgenes <- cancergenes[cancergenes$`Is Tumor Suppressor Gene` == 'Yes', ]
+# tf_onco <- vector(mode = "list", length = length(all_cancer))
+# tf_sup <- vector(mode = "list", length = length(all_cancer))
+
+# for(k in 1:length(all_cancer)){ ## overlap with the TFs in multiple cancer types
+
+#     tf_onco[[k]] <- intersect(oncogenes$`Hugo Symbol`, num_events_combs[[k]])
+#     tf_sup[[k]] <- intersect(supgenes$`Hugo Symbol`, num_events_combs[[k]])
+
+# }
 
 
 

@@ -286,6 +286,48 @@ ggsave(ppx,filename=paste0(save_dir, "/Events_types_perturbing_DBDs_neg.png"),wi
 
 
 
+##-- Look into the splicing behaviour in the master TFs -------------------
+cancer <- c()
+mcr <- c()
+mnl <- c()
+asid <- c()
+gene <- c()
+for(k in 1:length(all_cancer)){
+    temp <- data.table::fread(all_filesxx[k], sep='\t')
+    wh1 <- which(temp$FDR < fdr)
+    wh2 <- which(abs(temp$MEDIAN_DIFF) > diff)
+    wh <- intersect(wh1, wh2)
+    tempx <- temp[wh, ]
+    tempy <- tempx[tempx$as_id %in% all_events[[k]], ]
+
+    mcr <- c(mcr, tempy$MEDIAN_CANCER)
+    mnl <- c(mnl, tempy$MEDIAN_NORMAL)
+    cancer <- c(cancer, rep(all_cancer[k], length(tempy[[1]])))
+    asid <- c(asid, tempy$as_id)
+    gene <- c(gene, tempy$symbol)
+}
+
+pdata <- data.frame(cancer=cancer, gene=gene, asd=asid, median_cancer=mcr, median_normal=mnl)
+pdata$median_diff <- pdata$median_cancer-pdata$median_normal
+p <- ggplot(pdata, aes(cancer, median_diff)) + 
+geom_boxplot(outlier.shape = NA)+geom_jitter(aes(color=cancer))+
+theme(legend.text=element_text(size=12))
+basesize <- 12
+p <- p + theme_bw(base_size = basesize * 0.8) +
+scale_x_discrete(name="Cancer type") + 
+scale_y_continuous(name="Difference between median PSI in cancer samples\n and median PSI in normal samples", limits=c(-1,1)) +
+# geom_text(aes(label=count), position=position_dodge(width=0.9),hjust=0, vjust=0, angle=75, size=3)+
+# geom_text(aes(label=value), position=position_stack(vjust=0.5), size=3)+
+scale_color_manual(values=c('#a6cee3','#1f78b4','#b2df8a','#33a02c','#fb9a99','#ffff99',
+    '#fdbf6f','#ff7f00','#cab2d6','#6a3d9a','#e31a1c','#b15928','black','#9e0142','#053061'))+
+theme(axis.text.x = element_text(size = basesize * 0.6, angle = 60, hjust = 0.5,vjust=0.5, colour = "black"),
+axis.text.y = element_text(size = basesize * 0.6, angle = 0, hjust = 0.5,vjust=0.5, colour = "black"), 
+strip.text = element_text(size = basesize * 0.8), axis.title=element_text(basesize * 0.8))+
+guides(color='none')
+ggsave(p,filename=paste0(save_dir,"/DBD_perturbing_splicingEvents.png"),width=7, height=4, dpi=400)
+
+
+
 
 ##--- Splicing events occuring in multiple cancer types --------------------------------
 combs <- list() ## store all combinations
