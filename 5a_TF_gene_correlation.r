@@ -369,8 +369,8 @@ ggsave(p,filename=paste0("../results/Event_gene_pairs_cor_cont.png"),width=3.5, 
 ##--- Pairs of event-gene pairs affecting the same gene that are contradictory in terms of 
 ##--- splicing ----
 fdatay <- ydata_diff
-fdatay$X1 <- paste0(fdatay$TF, '_', ydata_diff$ASID1)
-fdatay$X2 <- paste0(fdatay$TF, '_', ydata_diff$ASID2)
+fdatay$X1 <- paste0(fdatay$TF, '_', fdatay$ASID1)
+fdatay$X2 <- paste0(fdatay$TF, '_', fdatay$ASID2)
 cont_pairs$X1 <- unlist(lapply(cont_pairs$AS1, function(x) substr(x, 1, nchar(x)-3)))
 cont_pairs$X2 <- unlist(lapply(cont_pairs$AS2, function(x) substr(x, 1, nchar(x)-3)))
 
@@ -391,14 +391,19 @@ num_sig_cors_dx_c <- c()
 for(k in 1:length(all_cancer)){
     temp <- igraph::as_data_frame(num_sig_cors_d[[k]])
     temp1 <- fdatay[fdatay$CANCER == all_cancer[k], ]
-    wh1 <- which(temp1$X1 %in% temp[[1]])
-    wh2 <- which(temp1$X2 %in% temp[[2]])
-    wha <- intersect(wh1, wh2)
-    wh1 <- which(temp1$X2 %in% temp[[1]])
-    wh2 <- which(temp1$X1 %in% temp[[2]])
-    whb <- intersect(wh1, wh2)
-    wh <- union(wha, whb)
-    temp_gr <- temp1[wh, ]
+    pos <- c()
+    for(j in 1:length(temp[[1]])){
+        wh1 <- which(temp1$X1 == temp[[1]][j])
+        wh2 <- which(temp1$X2 == temp[[2]][j])
+        wha <- intersect(wh1, wh2)
+        wh1 <- which(temp1$X2 == temp[[1]][j])
+        wh2 <- which(temp1$X1 == temp[[2]][j])
+        whb <- intersect(wh1, wh2)
+        wh <- union(wha, whb)
+        pos <- c(pos, wh)
+    }
+
+    temp_gr <- temp1[pos, ]
     temp_gr$e1 <- paste0(temp_gr$ASID1,'_',temp_gr$TARGET)
     temp_gr$e2 <- paste0(temp_gr$ASID2,'_',temp_gr$TARGET)
     num_sig_cors_dx[[k]] <- igraph::graph_from_data_frame(temp_gr[,c(10,11)], directed=FALSE)
