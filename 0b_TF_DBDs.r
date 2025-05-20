@@ -443,11 +443,15 @@ for(k in 1:length(transcript_uni_ids)){
 ##----------- Add DBD information for the TFs from UniProt files ------------------------
 # Check that it doesn't match any non-number
 numbers_only <- function(x) !grepl("\\D", x)
+store_dir <- '../data/uniprot_Ensembl_Exon_map'
 data.table::fwrite(uniprot_name_id_map,'../data/uniprot_name_id_map.txt',sep='\t', row.names=FALSE, quote=FALSE)
 uniprot_name_id_map <- data.table::fread('../data/uniprot_name_id_map.txt')
 allfiles <- list.files(store_dir,full.names=TRUE)
 DBDs <- c()
 DBDs_list <- vector(mode = "list", length = length(allfiles))
+
+tprot <- c()
+tdbd <- c()
 
 for(k in 1:length(allfiles)){
 
@@ -521,11 +525,32 @@ for(k in 1:length(allfiles)){
     
     temp_file$DBD <- dna_bind
     DBDs_list[[k]] <- temp_binds
-    data.table::fwrite(temp_file, paste0(store_dir,'/',temp_uniprot,'.txt'), row.names=FALSE, sep='\t', quote=FALSE)
+    # data.table::fwrite(temp_file, paste0(store_dir,'/',temp_uniprot,'.txt'), row.names=FALSE, sep='\t', quote=FALSE)
 
+    tprot <- c(tprot, temp_uniprot)
+    tdbd <- c(tdbd, paste(unique(setdiff(temp_binds,'-')), collapse=';'))
     cat('TF',k,'of',length(allfiles),'done\n')
 
 }
+
+
+
+##--- check if the DBD mappings match with what is reported in the "human transcription factors" paper from 2018 --
+tdbd_dt <- data.frame(Uniprotswissprot=tprot, DBD=tdbd)
+emap <- data.table::fread('../data/ensembl_name_map.txt')
+emap <- unique(emap[,c(8,9)])
+tdbdtx <- merge(tdbd_dt, emap, by='Uniprotswissprot')
+
+xx <- "1-s2.0-S0092867418301065-mmc2.xlsx"
+tf_file <- readxl::read_excel(paste0('../data/',xx),2)
+tf_file <- as.data.frame(tf_file)
+tf_file1 <- tf_file[,2:3]
+tf_file1 <- tf_file1[-1,]
+colnames(tf_file1) <- c('HGNC_symbol','DBD')
+
+tdbdtz <- merge(tf_file1, tdbdtx, by='HGNC_symbol')
+data.table::fwrite(tdbdtz, '../data/DBD_mapping.csv')
+##--------------------------------------------------------------------------------------------
 
 ##-- 1564 out of 2460 TFs have DBD info ------------------------------------------------------------
 dbds <- plyr::count(DBDs)

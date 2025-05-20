@@ -592,7 +592,7 @@ ggsave(p,filename=paste0(save_dir, "/Cancerspecific_events.png"),width=7, height
 
 ##--- Number of TFs with perturbed splicing events ----------------------------------------------------------------------
 num_tf_events <- c()
-
+tf_events <- list()
 for(k in 1:length(all_cancer)){
 
     temp <- data.table::fread(all_files[k], sep='\t')
@@ -601,6 +601,7 @@ for(k in 1:length(all_cancer)){
     whx <- which(tempx$symbol %in% tfs$Gene_Symbol) ## number of AS events concerning TFs
     tempy <- tempx[whx,]
     num_tf_events <- c(num_tf_events, length(unique(tempy$symbol)))
+    tf_events[[k]] <- unique(tempy$symbol)
     
 }
 
@@ -621,4 +622,41 @@ panel.grid.major = element_blank(),panel.grid.minor = element_blank(),
 strip.text = element_text(size = basesize * 0.8), axis.title=element_text(basesize * 0.8))+
 guides(fill='none')#guide_legend(title="Cancer type",ncol=2))
 ggsave(p,filename=paste0(save_dir,"/Sig_events_TFs_genes.png"),width=3.5, height=3, dpi=400)
+
+
+# ##-- overlap with tissue-specific TFs ---
+# tissue_specific <- data.table::fread('../data/main.txt')
+# tis <- tissue_specific[tissue_specific$`Gene Type` == 'TF', ]
+# tis <- tis[tis$`Cell Type` == 'Cancer cell', ]
+# all_tissue <- unique(tis$`Tissue Type`)
+
+# sel_tissue <- list('Bladder', 'Breast', 'Colon', 'Esophagus', c('Nasopharyngeal carcinoma','Salivary gland','Oral cavity'),
+#     'Kidney', 'Kidney', 'Kidney', 'Liver', 'Lung', 'Lung', 'Prostate', 'Stomach', 'Thyroid', 'Uterus')
+# seltis <- list()
+# fract <- c()
+# for(k in 1:length(all_cancer)){
+#     temptis <- unique(tis[tis$`Tissue Type` %in% sel_tissue[[k]], ]$`Gene Name`)
+#     seltis[[k]] <- intersect(tf_events[[k]], temptis)
+# }
+
+
+# sel_tissue <- list('Bladder', 'Breast', 'Colon', 'Kidney', 'Liver', 'Lung', 'Prostate', 'Stomach', 'Thyroid', 'Uterus')
+# all_tfs <- c()
+# cangrp <- list('BLCA','BRCA','COAD',c('KICH','KIRC','KIRP'),'LIHC',c('LUAD','LUSC'), 'PRAD', 'STAD','THCA','UCEC')
+# for(k in 1:length(cangrp)){
+#     tx <- c()
+#     for(j in 1:length(cangrp[[k]])){
+#         tx <- union(tx, tf_events[[which(all_cancer == cangrp[[k]][j])]])
+#     }
+#     all_tfs[[k]] <- tx
+# }
+
+# seltis <- list()
+# fract <- c()
+# for(k in 1:length(sel_tissue)){
+#     temptis <- unique(tis[tis$`Tissue Type` %in% sel_tissue[[k]], ]$`Gene Name`)
+#     seltis[[k]] <- intersect(all_tfs[[k]], temptis)
+#     fract <- c(fract, length(intersect(all_tfs[[k]], temptis))/length(temptis))
+# }
+
 
