@@ -178,7 +178,7 @@ for(k in 1:length(all_cancer)){
         axis.text.y = element_text(size = 0.6*basesize, angle = 0, colour = "black"),
         panel.grid.major = element_blank(),panel.grid.minor = element_blank(),
         axis.line = element_line(colour = "black"), axis.title=element_text(size=basesize * 0.6, face="bold"),
-        legend.title=element_text(size=basesize * 0.6), legend.text=element_text(size=basesize * 0.6))+coord_fixed()+
+        legend.title=element_text(size=basesize * 0.6), legend.text=element_text(size=basesize * 0.6))+
     guides(fill=guide_legend(title="Hazard ratio (log2)",ncol=1))
     ggsave(ppx,filename=paste0(save_dir, "/",all_cancer[k],".png"),width=4, height=3, dpi=400)
 
