@@ -10,9 +10,10 @@ library(GenomicDataCommons)
 library(pheatmap)
 
 save_dir <- '../results_new/GRNs'
-if(!dir.exists(save_dir)){
-    dir.create(save_dir, recursive=TRUE)
+if(dir.exists(save_dir)){
+    unlink(save_dir, recursive=TRUE)
 }
+dir.create(save_dir, recursive=TRUE)
 
 fdr <- 0.05
 
@@ -21,6 +22,7 @@ tfs <- data.table::fread('../data/filtered_TFs_curated.txt', sep='\t')
 ##----------------------------------------------------------------------
 
 dbd_purt <- data.table::fread('../data/Events_perturbing_DBD.txt')
+ed_purt <- data.table::fread('../data/Events_perturbing_ED.txt')
 
 
 ##---- Using TFLink ----
@@ -35,9 +37,11 @@ grn_filt <- grn[grn$`Name.TF` %in% tfs$Gene_Symbol,]
 input_dir <- '../data/PSI_data'
 all_files <- gtools::mixedsort(list.files(input_dir, pattern='*filtered_PSI_paired.txt', full.names=TRUE))
 all_files_raw <- gtools::mixedsort(list.files(input_dir, pattern='^PSI_download', full.names=TRUE))
-
+all_files <- all_files[-4]
+all_files_raw <- all_files_raw[-4]
 all_cancer <- substr(basename(all_files), 1,4)
-
+paired_sam <- data.table::fread('../data/cancer_paired_samples.txt')
+paired_sam <- paired_sam[-4]
 
 ##--- splicing events affecting TFs ----------------------------------------------------------------------
 grns <- list()
@@ -47,8 +51,12 @@ wb1 <- openxlsx::createWorkbook(paste0(save_dir,'/DBD_perturbed_GRNs.xlsx'))
 for(k in 1:length(all_cancer)){
 
     temp <- data.table::fread(all_files[k], sep='\t')
-    tempdbd <- unique(dbd_purt[dbd_purt$CANCER == all_cancer[k], ]$AS)
+    tempdbd1 <- unique(dbd_purt[dbd_purt$CANCER == all_cancer[k], ]$AS)
+    tempdbd2 <- unique(ed_purt[ed_purt$CANCER == all_cancer[k], ]$AS)
+    tempdbd <- union(tempdbd1, tempdbd2)
     tempy <- temp[temp$as_id %in% tempdbd, ]
+    tempy$POSP <- tempy$POS/paired_sam[[2]][k]
+    tempy$NEGP <- tempy$NEG/paired_sam[[2]][k]
 
     temptfs <- unique(tempy$symbol)
     tempgrn1 <- grn_filt[grn_filt$`Name.TF` %in% temptfs, ]
@@ -67,20 +75,22 @@ for(k in 1:length(all_cancer)){
 
 ##--- Number of GR interactions ---
 pdata1 <- data.frame(cancer=all_cancer, count=recounts)
-# p <- ggplot(pdata, aes(cancer, count)) + 
-# geom_bar(stat="identity")+
-# theme(legend.text=element_text(size=12))
-# basesize <- 12
-# p <- p + theme_bw(base_size = basesize * 0.8) +
-# scale_x_discrete(name="Cancer type") + 
-# scale_y_continuous(name="# of perturbed \ngene regulatory interactions", limits=c(0,(max(pdata$count))+20)) +
-# geom_text(aes(label=count), position=position_dodge(width=0.9),hjust=0, vjust=0, angle=75, size=3)+
-# theme(axis.text.x = element_text(size = basesize * 0.6, angle = 60, hjust = 0.5,vjust=0.5, colour = "black"),
-# axis.text.y = element_text(size = basesize * 0.6, angle = 0, hjust = 0.5,vjust=0.5, colour = "black"), 
-# strip.text = element_text(size = basesize * 0.8), axis.title=element_text(basesize * 0.8))+
-# guides(fill='none')#guide_legend(title="Cancer type",ncol=2))
-# ggsave(p,filename=paste0(save_dir,"/DBD_perturbed_GRIs.png"),width=3.5, height=3, dpi=400)
 
+p <- ggplot(pdata1, aes(cancer, count)) + 
+geom_bar(stat="identity")+
+theme(legend.text=element_text(size=12))
+basesize <- 12
+maxv <- max(pdata1$count)
+p <- p + theme_bw(base_size = basesize * 0.8) +
+scale_x_discrete(name="Cancer type") + 
+scale_y_continuous(name="# of perturbed \ngene regulatory interactions", limits=c(0,maxv+300)) +
+geom_text(aes(label=count), position=position_dodge(width=0.9),hjust=0, vjust=0, angle=75, size=3)+
+theme(axis.text.x = element_text(size = basesize * 0.6, angle = 60, hjust = 0.5,vjust=0.5, colour = "black"),
+axis.text.y = element_text(size = basesize * 0.6, angle = 0, hjust = 0.5,vjust=0.5, colour = "black"), 
+panel.grid.major = element_blank(),panel.grid.minor = element_blank(),
+strip.text = element_text(size = basesize * 0.8), axis.title=element_text(basesize * 0.8))+
+guides(fill=guide_legend(title="Percent Spliced In",ncol=1))#guides(fill='none')
+ggsave(p,filename=paste0(save_dir,"/DBD_ED_perturbed_GRIs.png"),width=3.5, height=3, dpi=400)
 
 
 ##--- Overlap of GR interactions among cancer types ---
@@ -122,13 +132,14 @@ basesize <- 12
 maxv <- max(pdata$count)
 p <- p + theme_bw(base_size = basesize * 0.8) +
 scale_x_discrete(name="# of cancer types") + 
-scale_y_continuous(name="# of splicing events", limits=c(0,maxv+150)) +
+scale_y_continuous(name="# of splicing events", limits=c(0,maxv+300)) +
 geom_text(position=position_dodge(0.9), hjust=0, vjust=0, angle=75, size=2.5)+
 theme(axis.text.x = element_text(size = basesize * 0.6, angle = 60, hjust = 0.5,vjust=0.5, colour = "black"),
 axis.text.y = element_text(size = basesize * 0.6, angle = 0, hjust = 0.5,vjust=0.5, colour = "black"), 
+panel.grid.major = element_blank(),panel.grid.minor = element_blank(),
 strip.text = element_text(size = basesize * 0.8), axis.title=element_text(basesize * 0.8))+
 guides(fill=guide_legend(title="Percent Spliced In",ncol=1))#guides(fill='none')
-ggsave(p,filename=paste0(save_dir,"/DBD_perturbed_GRIs_overlap.png"),width=7, height=3, dpi=400)
+ggsave(p,filename=paste0(save_dir,"/DBD_ED__perturbed_GRIs_overlap.png"),width=7, height=3, dpi=400)
 
 
 
@@ -189,6 +200,8 @@ ggsave(p,filename=paste0(save_dir,"/DBD_perturbed_GRIs_overlap.png"),width=7, he
 store_dir <- '../data/correlations'
 all_sigs <- gtools::mixedsort(list.files(store_dir, pattern='*.txt', full.names=TRUE))
 wb1 <- openxlsx::createWorkbook(paste0(save_dir,'/DBD_perturbed_GRNs_gene_cor.xlsx'))
+wb11 <- openxlsx::createWorkbook(paste0(save_dir,'/DBD_perturbed_GRNs_gene_cor_max.xlsx'))
+
 recounts <- c()
 
 for(k in 1:length(all_cancer)){
@@ -198,31 +211,43 @@ for(k in 1:length(all_cancer)){
     tempcr <- tempcr[tempcr$RFDR < fdr, ]
 
     temp <- data.table::fread(all_files[k], sep='\t')
-    tempdbd <- unique(dbd_purt[dbd_purt$CANCER == all_cancer[k], ]$AS)
+    temp$POSP <- temp$POS/paired_sam[[2]][k]
+    temp$NEGP <- temp$NEG/paired_sam[[2]][k]
+
+    tempdbd1 <- unique(dbd_purt[dbd_purt$CANCER == all_cancer[k], ]$AS)
+    tempdbd2 <- unique(ed_purt[ed_purt$CANCER == all_cancer[k], ]$AS)
+    tempdbd <- union(tempdbd1, tempdbd2)
     tempy <- temp[temp$as_id %in% tempdbd, ]
-    # tempint <- tempcr[tempcr$ASID %in% tempy$as_id, ]
-    
-    # tempyy <- tempy[tempy$as_id %in% tempint$ASID, ]
+
     temptfs <- unique(tempy$symbol)
     tempgrn1 <- grn_filt[grn_filt$`Name.TF` %in% temptfs, ]
     tempgrn1 <- tempgrn1[,c(1,2,5,6,7,8)]
     dbd_grn <- igraph::graph_from_data_frame(tempgrn1[,c(3,4)])
 
-    # temptf <- c()
-    # for(j in 1:length(tempint[[1]])){
-    #     temptf <- c(temptf, tempy[tempy$as_id == tempint$ASID[j], ]$symbol)
-    # }
-    # tempint$TF <- temptf
+    temptf <- c()
+    posp <- c()
+    negp <- c()
+    mdiff <- c()
 
+    for(j in 1:length(tempcr[[1]])){
+        temptf <- c(temptf, temp[temp$as_id == tempcr$ASID[j], ]$symbol)
+        posp <- c(posp, temp[temp$as_id == tempcr$ASID[j], ]$POSP)
+        negp <- c(negp, temp[temp$as_id == tempcr$ASID[j], ]$NEGP)
+        mdiff <- c(mdiff, temp[temp$as_id == tempcr$ASID[j], ]$MEDIAN_DIFF)
+    }
+
+    tempcr$TF <- temptf
+    tempcr$POSP <- posp
+    tempcr$NEGP <- negp
+    tempcr$MEDIAN_DIFF <- mdiff
+
+    tempint <- tempcr
     cor <- c()
     rpval <- c()
     asid <- c()
-    temptf <- c()
-    for(j in 1:length(tempcr[[1]])){
-        temptf <- c(temptf, temp[temp$as_id == tempcr$ASID[j], ]$symbol)
-    }
-    tempcr$TF <- temptf
-    tempint <- tempcr
+    posp <- c()
+    negp <- c()
+    mdiff <- c()
     
     for(j in 1:length(tempgrn1[[1]])){
         wh1 <- which(tempint$TF == tempgrn1$`Name.TF`[j])
@@ -232,44 +257,79 @@ for(k in 1:length(all_cancer)){
             ct <- c()
             rt <- c()
             ast <- c()
+            psp <- c()
+            ngp <- c()
+            miff <- c()
             for(i in 1:length(wh)){
                 ct <- c(ct, signif(tempint$COR[wh[i]],3))
                 rt <- c(rt, signif(tempint$RFDR[wh[i]],3))
                 ast <- c(ast, tempint$ASID[wh[i]])
+                psp <- c(psp, signif(tempint$POSP[wh[i]],3))
+                ngp <- c(ngp, signif(tempint$NEGP[wh[i]],3))
+                miff <- c(miff, signif(tempint$MEDIAN_DIFF[wh[i]],3))
             }
             cor <- c(cor, paste(ct, collapse=';'))
             rpval <- c(rpval, paste(rt, collapse=';'))
             asid <- c(asid, paste(ast, collapse=';'))
+            posp <- c(posp, paste(psp, collapse=';'))
+            negp <- c(negp, paste(ngp, collapse=';'))
+            mdiff <- c(mdiff, paste(miff, collapse=';'))
         }else{
             cor <- c(cor, NA)
             rpval <- c(rpval, NA)
             asid <- c(asid, NA)
+            posp <- c(posp, NA)
+            negp <- c(negp, NA)
+            mdiff <- c(mdiff, NA)
         }
     }
 
     tempgrn1$COR <- cor
     tempgrn1$RFDR <- rpval
     tempgrn1$ASID <- asid
+    tempgrn1$POSP <- posp
+    tempgrn1$NEGP <- negp
+    tempgrn1$MEDIAN_DIFF <- mdiff
 
     ## save excel sheet ----
     tempz <- tempgrn1
+    tempz <- tempz[, -c(5,6)]
     openxlsx::addWorksheet(wb1, sheetName = all_cancer[k])
     openxlsx::writeData(wb1, sheet = all_cancer[k], tempz)
     openxlsx::saveWorkbook(wb1, paste0(save_dir,'/DBD_perturbed_GRNs_gene_cor.xlsx'), overwrite = T)
 
-    wh <- length(which(!is.na(tempgrn1$ASID)))
-    recounts <- c(recounts, wh)
-    # cor_grn <- igraph::graph_from_data_frame(tempint[,c(8,2)])
-    # bt_grn <- igraph::intersection(cor_grn, dbd_grn)
-    # print(igraph::ecount(bt_grn))
-    # print(igraph::ecount(bt_grn)/igraph::ecount(cor_grn))
+    tempzz <- tempz[complete.cases(tempz),]
+    recounts <- c(recounts, length(tempzz[[1]]))
+
+    ##-- max difference ---
+    mdi <- lapply(as.list(tempzz$MEDIAN_DIFF), function(x) as.numeric(unlist(strsplit(x, '[;]'))))
+    maxdiff_pos <- unlist(lapply(mdi, function(x) which(abs(x) == max(abs(x)))[1] ))
+    maxdiff <- unlist(lapply(mdi, function(x) x[which(abs(x) == max(abs(x)))[1]] ))
+
+    ##-- corresponding cor, rfdr,  asid, posp, negp
+    ncorr <- mapply(function(x,y) as.numeric(unlist(strsplit(x, '[;]'))[y]), as.list(tempzz$COR), as.list(maxdiff_pos))
+    nrfdr <- mapply(function(x,y) as.numeric(unlist(strsplit(x, '[;]'))[y]), as.list(tempzz$RFDR), as.list(maxdiff_pos))
+    nasid <- mapply(function(x,y) unlist(strsplit(x, '[;]'))[y], as.list(tempzz$ASID), as.list(maxdiff_pos))
+    nposp <- mapply(function(x,y) as.numeric(unlist(strsplit(x, '[;]'))[y]), as.list(tempzz$POSP), as.list(maxdiff_pos))
+    nnegp <- mapply(function(x,y) as.numeric(unlist(strsplit(x, '[;]'))[y]), as.list(tempzz$NEGP), as.list(maxdiff_pos))
+
+    tempzz$NCOR <- ncorr
+    tempzz$NPOSP <- nposp
+    tempzz$NNEGP <- nnegp
+    tempzz$NASID <- nasid
+    tempzz$NRFDR <- nrfdr
+    tempzz$NMEDIAN_DIFF <- maxdiff
+    tempzz <- tempzz[,c(1,2,3,4,11,12,13,14,15,16)]
+    tempzz <- tempzz[order(-abs(tempzz$NMEDIAN_DIFF)),]
+
+    openxlsx::addWorksheet(wb11, sheetName = all_cancer[k])
+    openxlsx::writeData(wb11, sheet = all_cancer[k], tempzz)
+    openxlsx::saveWorkbook(wb11, paste0(save_dir,'/DBD_perturbed_GRNs_gene_cor_max.xlsx'), overwrite = T)
 
 }
 
 ##--- Number of GR interactions with at least one splice event-gene correlations ---
 pdata1$countcor <- recounts
-# colnames(pdata1) <- c('cancer','count','countcor')
-# pdata1 <- pdata1[,c(1,2,3,6)]
 pdata1$countx <- pdata1$count-pdata1$countcor
 allc <- pdata1$count
 pdata2 <- pdata1[,-2]
@@ -285,12 +345,13 @@ p <- p + theme_bw(base_size = basesize * 0.8) +
 scale_x_discrete(name="Cancer type") + 
 scale_y_continuous(name="# of GRIs", limits=c(0,max(pdata$count))) +
 # geom_text(aes(label=count), position=position_dodge(width=0.9),hjust=0, vjust=0, angle=75, size=3)+
-geom_text(aes(label=value), position=position_stack(vjust=0.5), size=3)+
+geom_text(aes(label=value), position=position_stack(vjust=0.5), size=2)+
 theme(axis.text.x = element_text(size = basesize * 0.6, angle = 60, hjust = 0.5,vjust=0.5, colour = "black"),
 axis.text.y = element_text(size = basesize * 0.6, angle = 0, hjust = 0.5,vjust=0.5, colour = "black"), 
+panel.grid.major = element_blank(),panel.grid.minor = element_blank(),
 strip.text = element_text(size = basesize * 0.8), axis.title=element_text(basesize * 0.8))+
 guides(fill=guide_legend(title="Significant event-\ngene correlations",ncol=1))
-ggsave(p,filename=paste0(save_dir,"/DBD_perturbed_GRIs.png"),width=5, height=3, dpi=400)
+ggsave(p,filename=paste0(save_dir,"/DBD_ED_perturbed_GRIs.png"),width=5, height=3, dpi=400)
 
 # p <- ggplot(pdata, aes(cancer, count)) + 
 # geom_bar(stat="identity")+
