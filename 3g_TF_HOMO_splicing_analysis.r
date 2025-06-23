@@ -1,5 +1,5 @@
 ##############################################################################################
-# Purpose: For each cancer type, see whether DBDs are removed by AS
+# Purpose: For each cancer type, see whether homodimer residues are removed by AS
 ##############################################################################################
 
 rm(list=ls())
@@ -12,14 +12,14 @@ library(seqinr)
 library(dorothea)
 library(pheatmap)
 
-save_dir <- '../results_new/TF_DBD'
+save_dir <- '../results_new/TF_HOMODIMER'
 if(dir.exists(save_dir)){
     unlink(save_dir, recursive=TRUE)
 }
 dir.create(save_dir, recursive=TRUE)
 
 psi_input <- '../data/PSI_data'
-as_input <- '../data/uniprot_Ensembl_Exon_map_DBD_AS'
+as_input <- '../data/uniprot_Ensembl_Exon_map_DBD_ED_AS_HD'
 
 fdr <- 0.05
 atleast_DBD <- 1 ## least number of DBD overlapping amino acids perturbed by a splicing event X to consider the DBD as perturbed by X
@@ -80,7 +80,7 @@ for(k in 1:length(all_cancer)){
         temp6 <- temp[temp$ME != '-', ]
 
         if(nrow(temp1) > 0){
-            wht <- which(temp1$DBD != '-')
+            wht <- which(temp1$HOMODIMER_DEGREE != '-')
             if(length(wht) >= atleast_DBD){
                 temp1 <- temp1[wht,]
                 all_filesx1 <- c(all_filesx1, all_files[j])
@@ -89,7 +89,7 @@ for(k in 1:length(all_cancer)){
         }
 
         if(nrow(temp2) > 0){
-            wht <- which(temp2$DBD != '-')
+            wht <- which(temp2$HOMODIMER_DEGREE != '-')
             if(length(wht) >= atleast_DBD){
                 temp2 <- temp2[wht,]
                 all_filesx2 <- c(all_filesx2, all_files[j])
@@ -98,7 +98,7 @@ for(k in 1:length(all_cancer)){
         }
 
         if(nrow(temp3) > 0){
-            wht <- which(temp3$DBD != '-')
+            wht <- which(temp3$HOMODIMER_DEGREE != '-')
             if(length(wht) >= atleast_DBD){
                 temp3 <- temp3[wht,]
                 all_filesx3 <- c(all_filesx3, all_files[j])
@@ -107,7 +107,7 @@ for(k in 1:length(all_cancer)){
         }
 
         if(nrow(temp4) > 0){
-            wht <- which(temp4$DBD != '-')
+            wht <- which(temp4$HOMODIMER_DEGREE != '-')
             if(length(wht) >= atleast_DBD){
                 temp4 <- temp4[wht,]
                 all_filesx4 <- c(all_filesx4, all_files[j])
@@ -116,7 +116,7 @@ for(k in 1:length(all_cancer)){
         }
 
         if(nrow(temp5) > 0){
-            wht <- which(temp5$DBD != '-')
+            wht <- which(temp5$HOMODIMER_DEGREE != '-')
             if(length(wht) >= atleast_DBD){
                 temp5 <- temp5[wht,]
                 all_filesx5 <- c(all_filesx5, all_files[j])
@@ -125,7 +125,7 @@ for(k in 1:length(all_cancer)){
         }
 
         if(nrow(temp6) > 0){
-            wht <- which(temp6$DBD != '-')
+            wht <- which(temp6$HOMODIMER_DEGREE != '-')
             if(length(wht) >= atleast_DBD){
                 temp6 <- temp6[wht,]
                 all_filesx6 <- c(all_filesx6, all_files[j])
@@ -196,11 +196,11 @@ store_val <- function(y1){
     if(nrow(y1) == 0){
         flag <- 0
     }else{
-        y2 <- y1[y1$DBD != '-', ]
+        y2 <- y1[y1$HOMODIMER_DEGREE != '-', ]
         if(nrow(y2) < atleast_DBD){ ## consider an event to perturb a DBD if the event affects at least 2 DBD positions
             flag <- 0
         }else{
-            flag <- unique(y2$DBD)
+            flag <- unique(y2$HOMODIMER_DEGREE)
         }
     }
     return(paste(flag,collapse=','))
@@ -215,7 +215,7 @@ corr2 <- c()
 corr3 <- c()
 corr4 <- c()
 counter <- 0
-wb1 <- openxlsx::createWorkbook(paste0(save_dir,'/Events_perturbing_DBDs.xlsx'))
+wb1 <- openxlsx::createWorkbook(paste0(save_dir,'/Events_perturbing_HDs.xlsx'))
 
 for(k in 1:length(all_cancer)){
 
@@ -244,7 +244,7 @@ for(k in 1:length(all_cancer)){
                 counter <- counter+1
                 next
             } ## some gene symbols of TFs were not mapped to Ensembl
-            tmap <- as.data.frame(data.table::fread(paste0('../data/uniprot_Ensembl_Exon_map_DBD_AS/',tuni,'_',all_cancer[k],'.txt')))
+            tmap <- as.data.frame(data.table::fread(paste0(as_input,'/',tuni,'_',all_cancer[k],'.txt')))
             
             if(tempyy$splice_type[j] == 'AP'){
                 y1 <- tmap[tmap$AP == tempyy$as_id[j], ]
@@ -298,11 +298,11 @@ for(k in 1:length(all_cancer)){
     tdatat <- tdatat[order(abs(tdatat$MEDIAN_DIFF), decreasing=TRUE), ]
     openxlsx::addWorksheet(wb1, sheetName = all_cancer[k])
     openxlsx::writeData(wb1, sheet = all_cancer[k], tdatat)
-    openxlsx::saveWorkbook(wb1, paste0(save_dir,'/Events_perturbing_DBDs.xlsx'), overwrite = T)
+    openxlsx::saveWorkbook(wb1, paste0(save_dir,'/Events_perturbing_HDs.xlsx'), overwrite = T)
 }
 
-tdata <- data.frame(CANCER=tcancer, AS=asid, DBD=odbd, MEDIAN_CANCER=corr1, MEDIAN_NORMAL=corr2, MEDIAN_DIFF=corr3, FDR=corr4)
-data.table::fwrite(tdata, paste0('../data/Events_perturbing_DBD.txt'), row.names=FALSE, quote=FALSE, sep='\t')
+tdata <- data.frame(CANCER=tcancer, AS=asid, HOMODIMER_DEGREE=odbd, MEDIAN_CANCER=corr1, MEDIAN_NORMAL=corr2, MEDIAN_DIFF=corr3, FDR=corr4)
+data.table::fwrite(tdata, paste0('../data/Events_perturbing_HD.txt'), row.names=FALSE, quote=FALSE, sep='\t')
 
 ##----------------------------------------------------------------
 dbd_purt_dt <- tdata
@@ -363,7 +363,7 @@ axis.text.y = element_text(size = basesize * 0.6, angle = 0, hjust = 0.5,vjust=0
 panel.grid.major = element_blank(),panel.grid.minor = element_blank(),
 strip.text = element_text(size = basesize * 0.8), axis.title=element_text(basesize * 0.8))+
 guides(fill=guide_legend(title="Percent Spliced In",ncol=1))#guides(fill='none')
-ggsave(p,filename=paste0(save_dir,"/Events_perturbing_DBDs.png"),width=3.5, height=3, dpi=400)
+ggsave(p,filename=paste0(save_dir,"/Events_perturbing_HDs.png"),width=3.5, height=3, dpi=400)
 
 
 ##--- plot the number of splicing events of different types affecting TFs -----------------
@@ -383,7 +383,7 @@ theme_bw()+theme(axis.text.x = element_text(size = 1*basesize, angle = 60, vjust
     panel.grid.major = element_blank(),panel.grid.minor = element_blank(),
     axis.line = element_line(colour = "black"))+
 guides(fill=guide_legend(title="Alternative splicing type"))
-ggsave(ppx,filename=paste0(save_dir, "/Events_types_perturbing_DBDs.png"),width=7, height=3, dpi=400)
+ggsave(ppx,filename=paste0(save_dir, "/Events_types_perturbing_HDs.png"),width=7, height=3, dpi=400)
 
 
 ###------ Distribution of perturbation values ----------------------------------------------------
@@ -442,7 +442,7 @@ strip.text = element_text(size = basesize * 0.8), axis.title=element_text(basesi
 # geom_hline(yintercept=-0.2, color='black', linetype='dashed', size=0.2)+
 scale_color_manual(values=c('#e41a1c','#377eb8'))+
 guides(color=guide_legend(title="PSI in cancer\nvs.\npaired normal\nsamples",ncol=1, override.aes = list(size=2)))
-ggsave(p,filename=paste0(save_dir,"/Perturbed_events_patients_DBD.png"),width=4.5, height=3, dpi=600)
+ggsave(p,filename=paste0(save_dir,"/Perturbed_events_patients_HD.png"),width=4.5, height=3, dpi=600)
 
 
 ##-----------------------------------------------------------------------------------------
@@ -484,7 +484,7 @@ axis.text.y = element_text(size = basesize * 0.8, angle = 0, hjust = 0.5,vjust=0
 panel.grid.major = element_blank(),panel.grid.minor = element_blank(),
 strip.text = element_text(size = basesize * 0.8), axis.title=element_text(basesize * 0.8))+
 guides(color='none')
-ggsave(p,filename=paste0(save_dir,"/Sig_events_TFs_DBD_dist.png"),width=5, height=3, dpi=400)
+ggsave(p,filename=paste0(save_dir,"/Sig_events_TFs_HD_dist.png"),width=5, height=3, dpi=400)
 
 
 
@@ -531,7 +531,7 @@ theme(axis.text.x = element_text(size = basesize * 0.6, angle = 60, hjust = 0.5,
 axis.text.y = element_text(size = basesize * 0.6, angle = 0, hjust = 0.5,vjust=0.5, colour = "black"), 
 strip.text = element_text(size = basesize * 0.8), axis.title=element_text(basesize * 0.8))+
 guides(fill=guide_legend(title="Percent Spliced In",ncol=1))#guides(fill='none')
-ggsave(p,filename=paste0(save_dir,"/Events_perturbing_DBDs_overlap.png"),width=3.5, height=3, dpi=400)
+ggsave(p,filename=paste0(save_dir,"/Events_perturbing_HDs_overlap.png"),width=3.5, height=3, dpi=400)
 
 
 
@@ -550,7 +550,7 @@ axis.text.y = element_text(size = basesize * 0.6, angle = 0, hjust = 0.5,vjust=0
 panel.grid.major = element_blank(),panel.grid.minor = element_blank(), 
 strip.text = element_text(size = basesize * 0.8), axis.title=element_text(basesize * 0.8))+
 guides(fill='none')
-ggsave(p,filename=paste0(save_dir,"/TFs_with_affected_DBDs.png"),width=3.5, height=3, dpi=400)
+ggsave(p,filename=paste0(save_dir,"/TFs_with_affected_HDs.png"),width=3.5, height=3, dpi=400)
 
 
 ##----- PSI profile of the pancancer (at least 10 cancer types) events -------------
@@ -584,328 +584,6 @@ pdx <- t(as.matrix(pdata_mat))
 color <- c('#a50026','#d73027','#f46d43','#fdae61','#fee090','#e0f3f8','#abd9e9','#74add1','#4575b4','#313695')
 breaks <- seq(-1, 1, 0.2)
 p <- pheatmap(pdx,fontsize=3, color=color, breaks=breaks, cluster_rows=FALSE, cluster_cols=FALSE,cellheight=5, cellwidth = 5)
-ggsave(p,filename=paste0(save_dir, "/Pancancer_events_DBD.png"),width=7, height=5, dpi=600)
+ggsave(p,filename=paste0(save_dir, "/Pancancer_events_HD.png"),width=7, height=5, dpi=600)
 
 
-
-
-##--- total number of events -----
-# tevs <- unique(unlist(sig_events)) ## 316
-
-##--- Distribution of DBD types -----------------------------------------
-all_files <- list.files(as_input, pattern=paste0('*',all_cancer[1],'.txt'), full.names=TRUE)
-all_dbds <- c()
-numdbd <- c()
-# rel_pos <- list()
-# counter <- 1
-for(k in 1:length(all_files)){
-    temp <- data.table::fread(all_files[k])
-    tempdb <- setdiff(unique(temp$DBD),'-')
-    if(length(tempdb) != 0){
-        wh <- which(tempdb == 'NR C4-type')
-        if(length(wh) != 0){
-            tempdb[wh] <- 'Nuclear receptor'
-        }
-    }
-    tempdb <- unique(tempdb)
-    all_dbds <- c(all_dbds, tempdb)
-    numdbd <- c(numdbd, length(tempdb))
-    # wh <- which(temp$DBD != '-')
-    # if(length(wh) != 0){
-    #     rel_pos[[counter]] <- ceiling(signif(wh/length(temp[[1]]), 1))
-    #     counter <- counter+1
-    # }
-}
-
-# ## which TFs have more than one DBD --> check them manually
-# whm <- which(numdbd > 1)
-# for(k in 11:15){
-#     temp <- data.table::fread(all_files[whm[k]])
-#     print(temp$DBD)
-# }
-
-pdata <- plyr::count(all_dbds)
-pdata <- pdata[order(-pdata$freq),]
-wh <- which(pdata$freq < 5)
-pdata2 <- pdata[wh,]
-pdata1 <- pdata[-wh,]
-pdatax <- rbind(pdata1, data.frame(x=paste0('Others (',length(pdata2[[1]]),')'),freq=sum(pdata2$freq)))
-pdatax$x <- factor(pdatax$x, levels=pdatax$x)
-
-p <- ggplot(pdatax, aes(x, freq)) + 
-geom_bar(stat="identity",position=position_dodge())+
-theme(legend.text=element_text(size=12))
-basesize <- 12
-p <- p + theme_bw(base_size = basesize * 0.8) +
-scale_x_discrete(name="DNA binding domain") + 
-scale_y_continuous(name="Frequency of occurence", limits=c(0,max(pdatax$freq)+40)) +
-geom_text(aes(label=freq), position=position_dodge(width=0.9),hjust=0, vjust=0, angle=75, size=3)+
-theme(axis.text.x = element_text(size = basesize * 0.6, angle = 60, hjust = 1,vjust=1, colour = "black"),
-axis.text.y = element_text(size = basesize * 0.6, angle = 0, hjust = 0.5,vjust=0.5, colour = "black"), 
-panel.grid.major = element_blank(),panel.grid.minor = element_blank(), 
-strip.text = element_text(size = basesize * 0.8), axis.title=element_text(basesize * 0.8))+
-guides(fill='none')
-ggsave(p,filename=paste0(save_dir,"/DBDs_background.png"),width=7, height=4, dpi=400)
-
-
-
-
-
-##--- Distribution of DBD positions --------------------------------------------------------------------
-rel_pos <- c()
-counter <- 1
-idbd <- c()
-ids <- c()
-for(k in 1:length(all_files)){
-    temp <- data.table::fread(all_files[k])
-    tempdb <- setdiff(unique(temp$DBD),'-')
-    if(length(tempdb) != 0){
-        wh <- which(tempdb == 'NR C4-type')
-        if(length(wh) != 0){
-            tempdb[wh] <- 'Nuclear receptor'
-        }
-    }
-    tempdb <- unique(tempdb)
-
-    wh <- which(temp$DBD != '-')
-
-    if(length(wh) != 0){
-        whi <- intersect(tempdb, all_dbds)
-        for(j in 1:length(whi)){
-            whx <- which(temp$DBD == whi[j])
-            rel_pos <- c(rel_pos,whx/length(temp[[1]]))
-            counter <- counter+1
-            idbd <- c(idbd, rep(whi[j], length(whx)))
-            ids <- c(ids, rep(counter, length(whx)))
-        }
-    }
-}
-
-qdata <- data.frame(DBD=idbd, RPOS=rel_pos, ID=ids)
-## bin the relative positions
-qdata$bval <- cut(qdata$RPOS, breaks = seq(0,1,0.05), include.lowest=TRUE)
-
-wh <- which(qdata$DBD %in% pdata1$x)
-whe <- setdiff(seq(1,length(qdata[[1]])), wh)
-qdata$DBD[whe] <- paste0('Others (', length(pdata2[[1]]), ')')
-
-udbd <- unique(qdata$bval)
-qqdata <- data.frame(matrix(nrow=0, ncol=4))
-for(j in 1:length(udbd)){
-    temp <- qdata[qdata$bval == udbd[j], ]
-    tempu <- plyr::count(temp$DBD)
-    tempu$PRT <- (tempu$freq/sum(tempu$freq))*100
-    tempu$FLAG <- rep(udbd[j],length(tempu[[1]]))
-    qqdata <- rbind(qqdata, tempu)
-}
-
-basesize <- 8
-qqdata$lfreq <- log2(qqdata$freq)
-qqdata$x <- factor(qqdata$x, levels=pdatax$x)
-
-cols <- c('#a6cee3','#1f78b4','#b2df8a','#33a02c','#fb9a99','#e31a1c','#fdbf6f','#ff7f00','#cab2d6','#6a3d9a','#ffff99','#b15928',
-    '#8dd3c7','#ffffb3','#bebada','#fb8072','#80b1d3','#fdb462','#b3de69','#fccde5','#d9d9d9','#bc80bd','#ccebc5','#ffed6f','#000000',
-    '#ffffff')
-p <- ggplot(qqdata, aes(FLAG, freq, fill=x)) + geom_bar(stat="identity",position="stack",color='black')
-p <- p + theme_bw(base_size = basesize) +
-  scale_y_continuous(name="# of amino acids") +
-  scale_x_discrete(name="Relative sequence position bracket") +
-  scale_fill_manual(values=cols)+
-  guides(fill=guide_legend(title="DNA binding domain type",ncol=2))+
-  theme(axis.text.x = element_text(size = basesize * 1,angle = 60, hjust = 1,vjust=1, colour = "black"), 
-                         axis.text.y = element_text(size = basesize * 1, colour='black'), 
-                         panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
-        axis.title.x = element_text(size=basesize*1),axis.title.y = element_text(size=basesize*1), 
-        plot.title = element_text(size=basesize*1), strip.text.x = element_text(size = basesize * 1, colour = "black", angle = 0), 
-        strip.text.y = element_text(size = basesize * 1, colour = "black", angle = 0), legend.text=element_text(size=10))
-ggsave(p,filename=paste0(save_dir,'/DBD_distribution.png'),width=9, height=5, dpi=500)
-
-# ## distribution of amino acid positions ---
-# basesize <- 8
-# p <- ggplot(qdata, aes(RPOS)) + geom_barplot(binwidth=0.01)
-# p <- p + theme_grey(base_size = basesize) + labs(x = "Relative protein sequence position", y = "DBD type") +
-#   scale_y_continuous(name="DBD type") +
-#   scale_x_continuous(name="Relative protein sequence position") +
-#   guides(fill='none')+
-#   theme(axis.text.x = element_text(size = basesize * 1,angle = 60, hjust = 1,vjust=1, colour = "black"), 
-#                          axis.text.y = element_text(size = basesize * 1, colour='black'), 
-#                          panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
-#         axis.title.x = element_text(size=basesize*1),axis.title.y = element_text(size=basesize*1), 
-#         plot.title = element_text(size=basesize*1), strip.text.x = element_text(size = basesize * 1, colour = "black", angle = 0), 
-#         strip.text.y = element_text(size = basesize * 1, colour = "black", angle = 0), legend.text=element_text(size=10))
-# ggsave(p,filename=paste0(save_dir,'/DBD_distribution.png'),width=5, height=5, dpi=500)
-
-
-
-##-----------------------------------
-
-##--- which DBD types are affected over all cancer --------------------------------------
-##---------------------------------------------------------------------------------------
-##-- unique event DBD pair --
-event_dbd_unq <- unique(dbd_purt_dt[, c(2,3)])
-wh <- which(event_dbd_unq$DBD %like% 'NR C4-type')
-event_dbd_unq$DBD[wh] <- 'Nuclear receptor'
-wh <- which(event_dbd_unq$DBD %like% ',')
-pdatamul <- event_dbd_unq[wh,]
-pdatauni <- event_dbd_unq[-wh,]
-for(k in 1:length(pdatamul[[1]])){
-    tempv <- unlist(strsplit(pdatamul$DBD[k], '[,]'))
-    for(j in 1:length(tempv)){
-        pdatauni <- rbind(pdatauni, data.frame(AS=pdatamul$AS[k], DBD=tempv[j]))
-    }
-}
-
-pdataunix <- plyr::count(pdatauni$DBD)
-
-wh <- which(pdataunix$x %in% pdata1$x)
-whe <- setdiff(seq(1,length(pdataunix[[1]])), wh)
-pdataunix$x[whe] <- paste0('Others (', length(pdata2[[1]]), ')')
-pdatauniy <- aggregate(pdataunix$freq, by=list(Category=pdataunix$x), FUN=sum)
-
-## add missing DBDs ---
-mdbd <- setdiff(pdatax$x, pdatauniy$Category)
-pdatauniy <- rbind(pdatauniy, data.frame(Category=mdbd, x=0))
-pdatauniy$Category <- factor(pdatauniy$Category, levels=pdatax$x)
-
-p <- ggplot(pdatauniy, aes(Category, x)) + 
-geom_bar(stat="identity",position=position_dodge())+
-theme(legend.text=element_text(size=12))
-basesize <- 12
-p <- p + theme_bw(base_size = basesize * 0.8) +
-scale_x_discrete(name="DNA binding domain") + 
-scale_y_continuous(name="# of splicing events", limits=c(0,max(pdatauniy$x)+40)) +
-geom_text(aes(label=x), position=position_dodge(width=0.9),hjust=0, vjust=0, angle=75, size=3)+
-theme(axis.text.x = element_text(size = basesize * 0.6, angle = 60, hjust = 1,vjust=1, colour = "black"),
-axis.text.y = element_text(size = basesize * 0.6, angle = 0, hjust = 0.5,vjust=0.5, colour = "black"), 
-panel.grid.major = element_blank(),panel.grid.minor = element_blank(), 
-strip.text = element_text(size = basesize * 0.8), axis.title=element_text(basesize * 0.8))+
-guides(fill='none')
-ggsave(p,filename=paste0(save_dir,"/DBDs_affected.png"),width=7, height=4, dpi=400)
-
-
-
-pdatagh <- data.frame(matrix(ncol=3, nrow=0))
-for(k in 1:length(all_cancer)){
-
-    tempdbd <- unique(dbd_purt_dt[dbd_purt_dt$CANCER == all_cancer[k],][,c(2,3)])
-    wh <- which(tempdbd$DBD %like% 'NR C4-type')
-    if(length(wh) != 0){tempdbd$DBD[wh] <- 'Nuclear receptor'}
-    wh <- which(tempdbd$DBD %like% ',')
-    if(length(wh) != 0){
-        pdatam <- tempdbd[wh,]
-        pdatau <- tempdbd[-wh,]
-        for(i in 1:length(pdatam[[1]])){
-            tempv <- unlist(strsplit(pdatam$DBD[i], '[,]'))
-            for(j in 1:length(tempv)){
-                pdatau <- rbind(pdatau, data.frame(AS=pdatam$AS[i], DBD=tempv[j]))
-            }
-        }
-    }
-    pdataux <- plyr::count(pdatau$DBD)
-    pdataux$CANCER <- rep(all_cancer[k], length(pdataux[[1]]))
-    pdatagh <- rbind(pdatagh, pdataux)
-}
-
-
-##--- work from here --> make the group "others (29)"
-wh <- which(pdatagh$x %in% pdata1$x)
-whe <- setdiff(seq(1,length(pdatagh[[1]])), wh)
-pdatagh$x[whe] <- paste0('Others (', length(pdata2[[1]]), ')')
-
-
-##-- add number of unique splicing events ---
-nnam <- c()
-for(k in 1:length(pdatagh[[1]])){
-    wh <- which(pdatauniy$Category == pdatagh$x[k])
-    nnam <- c(nnam, paste0(pdatauniy$Category[wh],':',pdatauniy$x[wh]))
-}
-pdatagh$x <- nnam
-
-nnam <- c()
-for(k in 1:length(pdatagh[[1]])){
-    wh <- which(pdata_numbers$cancer == pdatagh$CANCER[k])
-    nnam <- c(nnam, paste0(pdata_numbers$cancer[wh],':',pdata_numbers$count[wh]))
-}
-pdatagh$CANCER <- nnam
-
-all_cancerx <- gtools::mixedsort(unique(pdatagh$CANCER))
-
-
-##-- Also make scatter plot of background and forground affected DBD --
-##--- tile plot -------------------------------------------------------
-pdataghx <- aggregate(pdatagh$freq, by=list(pdatagh$x, pdatagh$CANCER), FUN=sum)
-colnames(pdataghx) <- c('x','CANCER','freq')
-alldbds <- unique(pdataghx$x)
-tdbd <- c()
-tcancer <- c()
-tfrac <- c()
-for(k in 1:length(all_cancerx)){
-    temp <- pdataghx[pdataghx$CANCER == all_cancerx[k], ]
-    temp$per <- temp$freq/sum(temp$freq)
-    for(j in 1:length(alldbds)){
-        tempx <- temp[temp$x == alldbds[j], ]
-        if(nrow(tempx) != 0){
-            tfrac <- c(tfrac, tempx$freq)
-        }else{
-            tfrac <- c(tfrac, 0)
-        }
-        tcancer <- c(tcancer, all_cancerx[k])
-        tdbd <- c(tdbd, alldbds[j])
-    }
-}
-pdatat <- data.frame(CANCER=tcancer, DBD=tdbd, FRAC=tfrac)
-pdatat$bval <- ifelse(pdatat$FRAC < 10, pdatat$FRAC, '>=10')
-# pdatat$DBD <- factor(pdatat$DBD, levels=pdatax$x)
-
-
-cols <- c('#800026','#000000','#ffffff','#ffffcc','#ffeda0','#fed976','#feb24c','#fd8d3c','#fc4e2a','#e31a1c','#bd0026')
-# c('#08306b', '#6baed6','#deebf7', '#ffffcc','#fed976','#fd8d3c','#e31a1c','#800026')#'#2171b5', 
-# cols <- rev(brewer.pal(11,"Spectral"))
-basesize <- 8
-p <- ggplot(pdatat, aes(DBD, CANCER)) + geom_tile(aes(fill = bval), color='black')+scale_fill_manual(values=cols)
-  # scale_fill_gradientn(colors=cols)
-p <- p + theme_grey(base_size = basesize) + labs(x = "Sample", y = "Gene") +
-  scale_y_discrete(name="Cancer type") +
-  scale_x_discrete(name="DNA binding domain") +
-  guides(fill=guide_legend(title="# of splicing events", size=10))+
-  theme(axis.text.x = element_text(size = basesize * 1,angle = 60, hjust = 1,vjust=1, colour = "black"), 
-                         axis.text.y = element_text(size = basesize * 1, colour='black'), 
-                         panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
-        axis.title.x = element_text(size=basesize*1),axis.title.y = element_text(size=basesize*1), 
-        plot.title = element_text(size=basesize*1), strip.text.x = element_text(size = basesize * 1, colour = "black", angle = 0), 
-        strip.text.y = element_text(size = basesize * 1, colour = "black", angle = 0), legend.text=element_text(size=10))
-ggsave(p,filename=paste0(save_dir,'/Perturbed_DBDs_tile.png'),width=7, height=5, dpi=500)
-
-
-
-##---- alternative visualization of the fraction of perturbed DBD types ----
-pdatax1 <- pdatax
-pdatauniy1 <- pdatauniy
-pdatax1$frac <- signif((pdatax1$freq/sum(pdatax1$freq)*100),3)
-pdatauniy1$frac <- signif((pdatauniy1$x/sum(pdatauniy1$x)*100),3)
-colnames(pdatauniy1) <- c('x','freq','frac')
-pdatauniy1$FLAG <- rep('Cancer',length(pdatauniy1[[1]]))
-pdatax1$FLAG <- rep('Background',length(pdatax1[[1]]))
-alldata <- rbind(pdatax1, pdatauniy1)
-
-cols <- c('#a6cee3','#1f78b4','#b2df8a','#33a02c','#fb9a99','#e31a1c','#fdbf6f','#ff7f00','#cab2d6','#6a3d9a','#ffff99','#b15928',
-    '#8dd3c7','#ffffb3','#bebada','#fb8072','#80b1d3','#fdb462','#b3de69','#fccde5','#d9d9d9','#bc80bd','#ccebc5','#ffed6f','#000000',
-    '#ffffff')
-p <- ggplot(alldata, aes(FLAG, frac, fill=x)) + 
-geom_bar(stat="identity",position='stack', color='black')+
-theme(legend.text=element_text(size=12))
-basesize <- 12
-p <- p + theme_bw(base_size = basesize * 0.8) +
-scale_x_discrete(name="") + 
-scale_y_continuous(name="% of occurence/perturbation") +
-scale_fill_manual(values=cols)+
-# geom_text(aes(label=x), position=position_dodge(width=0.9),hjust=0, vjust=0, angle=75, size=3)+
-theme(axis.text.x = element_text(size = basesize * 0.6, angle = 60, hjust = 1,vjust=1, colour = "black"),
-axis.text.y = element_text(size = basesize * 0.6, angle = 0, hjust = 0.5,vjust=0.5, colour = "black"), 
-panel.grid.major = element_blank(),panel.grid.minor = element_blank(), 
-strip.text = element_text(size = basesize * 0.8), axis.title=element_text(basesize * 0.8))+
-guides(fill=guide_legend(title="# of splicing events", size=10),ncol=2)
-ggsave(p,filename=paste0(save_dir,"/DBDs_affected_frac.png"),width=5, height=5, dpi=400)
-
-
-##--------------------------------------------------------------------------

@@ -612,7 +612,7 @@ for(k in 1:length(all_files)){
 pdata <- plyr::count(all_dbds)
 pdata <- pdata[order(-pdata$freq),]
 pdata$x <- factor(pdata$x, levels=pdata$x)
-
+pdatax <- pdata
 p <- ggplot(pdata, aes(x, freq)) + 
 geom_bar(stat="identity",position=position_dodge())+
 theme(legend.text=element_text(size=12))
@@ -627,6 +627,70 @@ panel.grid.major = element_blank(),panel.grid.minor = element_blank(),
 strip.text = element_text(size = basesize * 0.8), axis.title=element_text(basesize * 0.8))+
 guides(fill='none')
 ggsave(p,filename=paste0(save_dir,"/EDs_background.png"),width=2.5, height=4, dpi=400)
+
+
+##--- Distribution of DBD positions --------------------------------------------------------------------
+rel_pos <- c()
+counter <- 1
+idbd <- c()
+ids <- c()
+for(k in 1:length(all_files)){
+    temp <- data.table::fread(all_files[k])
+    tempdb <- setdiff(unique(temp$ED),'-')
+    tempdb <- unique(tempdb)
+
+    wh <- which(temp$ED != '-')
+
+    if(length(wh) != 0){
+        whi <- intersect(tempdb, all_dbds)
+        for(j in 1:length(whi)){
+            whx <- which(temp$ED == whi[j])
+            rel_pos <- c(rel_pos,whx/length(temp[[1]]))
+            counter <- counter+1
+            idbd <- c(idbd, rep(whi[j], length(whx)))
+            ids <- c(ids, rep(counter, length(whx)))
+        }
+    }
+}
+
+qdata <- data.frame(ED=idbd, RPOS=rel_pos, ID=ids)
+## bin the relative positions
+qdata$bval <- cut(qdata$RPOS, breaks = seq(0,1,0.05), include.lowest=TRUE)
+
+# wh <- which(qdata$ED %in% pdata1$x)
+# whe <- setdiff(seq(1,length(qdata[[1]])), wh)
+# qdata$DBD[whe] <- paste0('Others (', length(pdata2[[1]]), ')')
+
+udbd <- unique(qdata$bval)
+qqdata <- data.frame(matrix(nrow=0, ncol=4))
+for(j in 1:length(udbd)){
+    temp <- qdata[qdata$bval == udbd[j], ]
+    tempu <- plyr::count(temp$ED)
+    tempu$PRT <- (tempu$freq/sum(tempu$freq))*100
+    tempu$FLAG <- rep(udbd[j],length(tempu[[1]]))
+    qqdata <- rbind(qqdata, tempu)
+}
+
+basesize <- 8
+# qqdata$lfreq <- log2(qqdata$freq)
+qqdata$x <- factor(qqdata$x, levels=pdatax$x)
+
+cols <- c('#a6cee3','#1f78b4','#b2df8a','#33a02c','#fb9a99','#e31a1c','#fdbf6f','#ff7f00','#cab2d6','#6a3d9a','#ffff99','#b15928',
+    '#8dd3c7','#ffffb3','#bebada','#fb8072','#80b1d3','#fdb462','#b3de69','#fccde5','#d9d9d9','#bc80bd','#ccebc5','#ffed6f','#000000',
+    '#ffffff')
+p <- ggplot(qqdata, aes(FLAG, freq, fill=x)) + geom_bar(stat="identity",position="stack",color='black')
+p <- p + theme_bw(base_size = basesize) +
+  scale_y_continuous(name="# of amino acids") +
+  scale_x_discrete(name="Relative sequence position bracket") +
+  scale_fill_manual(values=cols)+
+  guides(fill=guide_legend(title="Effector domain type",ncol=1))+
+  theme(axis.text.x = element_text(size = basesize * 1,angle = 60, hjust = 1,vjust=1, colour = "black"), 
+                         axis.text.y = element_text(size = basesize * 1, colour='black'), 
+                         panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+        axis.title.x = element_text(size=basesize*1),axis.title.y = element_text(size=basesize*1), 
+        plot.title = element_text(size=basesize*1), strip.text.x = element_text(size = basesize * 1, colour = "black", angle = 0), 
+        strip.text.y = element_text(size = basesize * 1, colour = "black", angle = 0), legend.text=element_text(size=10))
+ggsave(p,filename=paste0(save_dir,'/ED_distribution.png'),width=7, height=5, dpi=500)
 
 
 ##--- which ED types are affected over all cancer --------------------------------------
@@ -756,9 +820,49 @@ ggsave(p,filename=paste0(save_dir,'/Perturbed_EDs_tile.png'),width=5, height=5, 
 
 
 
+
+##---- alternative visualization of the fraction of perturbed ED types -----------------------------------
+pdatax1 <- pdatax
+pdatauniy1 <- pdataunix
+pdatax1$frac <- signif((pdatax1$freq/sum(pdatax1$freq)*100),3)
+pdatauniy1$frac <- signif((pdatauniy1$freq/sum(pdatauniy1$freq)*100),3)
+pdatauniy1$FLAG <- rep('Cancer',length(pdatauniy1[[1]]))
+pdatax1$FLAG <- rep('Background',length(pdatax1[[1]]))
+alldata <- rbind(pdatax1, pdatauniy1)
+
+cols <- c('#a6cee3','#1f78b4','#b2df8a','#33a02c','#fb9a99','#e31a1c','#fdbf6f','#ff7f00','#cab2d6','#6a3d9a','#ffff99','#b15928',
+    '#8dd3c7','#ffffb3','#bebada','#fb8072','#80b1d3','#fdb462','#b3de69','#fccde5','#d9d9d9','#bc80bd','#ccebc5','#ffed6f','#000000',
+    '#ffffff')
+p <- ggplot(alldata, aes(FLAG, frac, fill=x)) + 
+geom_bar(stat="identity",position='stack', color='black')+
+theme(legend.text=element_text(size=12))
+basesize <- 12
+p <- p + theme_bw(base_size = basesize * 0.8) +
+scale_x_discrete(name="") + 
+scale_y_continuous(name="% of occurence/perturbation") +
+scale_fill_manual(values=cols)+
+# geom_text(aes(label=x), position=position_dodge(width=0.9),hjust=0, vjust=0, angle=75, size=3)+
+theme(axis.text.x = element_text(size = basesize * 0.6, angle = 60, hjust = 1,vjust=1, colour = "black"),
+axis.text.y = element_text(size = basesize * 0.6, angle = 0, hjust = 0.5,vjust=0.5, colour = "black"), 
+panel.grid.major = element_blank(),panel.grid.minor = element_blank(), 
+strip.text = element_text(size = basesize * 0.8), axis.title=element_text(basesize * 0.8))+
+guides(fill=guide_legend(title="# of splicing events", size=10),ncol=2)
+ggsave(p,filename=paste0(save_dir,"/EDs_affected_frac.png"),width=5, height=5, dpi=400)
+
+##---------------------------------------------------------------------------------------------------------
+
+
+
+
+
 ###---- plot for splicing events perturbing DBD, ED, both of DBD and ED, and none of DBD or ED -----------------
 ed_data <- unique(data.table::fread('../data/Events_perturbing_ED.txt')$AS)
 dbd_data <- unique(data.table::fread('../data/Events_perturbing_DBD.txt')$AS)
+coding_data <- c()
+for(k in 1:length(all_cancer)){
+    coding_data <- union(coding_data, openxlsx::read.xlsx('../results_new/TF_coding/Events_perturbing_coding_region.xlsx',k)$AS)
+}
+
 all_splice <- c()
 for(k in 1:length(all_cancer)){
     temp <- data.table::fread(all_filesxx[k], sep='\t')
@@ -769,13 +873,15 @@ for(k in 1:length(all_cancer)){
     all_splice <- union(all_splice, tempy$as_id)
 }
 
-rem_splice <- setdiff(all_splice, union(ed_data, dbd_data))
+rem_splice <- setdiff(all_splice, union(union(ed_data, dbd_data), coding_data))
+no_ed_dbd_splice <- setdiff(coding_data, union(ed_data, dbd_data))
 ed_splice <- setdiff(ed_data, dbd_data)
 dbd_splice <- setdiff(dbd_data, ed_data)
 both_splice <- intersect(ed_data, dbd_data)
 
-pdata <- data.frame(Type=c('Effector domain (ED)', 'DNA binding domain (DBD)', 'Both ED and DBD', 'None of ED or DBD'), 
-    countx=c(length(ed_splice), length(dbd_splice), length(both_splice), length(rem_splice)))
+pdata <- data.frame(Type=c('Effector domain (ED)', 'DNA binding domain (DBD)', 'Both ED and DBD',
+ 'Coding but not DBD/ED', 'Non-coding'), 
+    countx=c(length(ed_splice), length(dbd_splice), length(both_splice), length(no_ed_dbd_splice), length(rem_splice)))
 
 pdata$count <- (pdata$countx/sum(pdata$countx))*100
 

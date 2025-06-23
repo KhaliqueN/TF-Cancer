@@ -46,6 +46,7 @@ tf_events <- list()
 tf_events_all <- list()
 tf_max_medians <- list()
 tf_max_events <- list()
+
 for(k in 1:length(filt_cancer)){
 
     temp <- data.table::fread(all_files[which(all_files %like% filt_cancer[k])], sep='\t')
@@ -133,6 +134,8 @@ for(k in 1:length(filt_cancer)){
 all_sig_events <- unique(unlist(tf_events_all))
 cvals <- rep(100,length(all_sig_events))
 svals <- rep(100,length(all_sig_events))
+celline <- rep(100,length(all_sig_events))
+tcancer <- rep(100,length(all_sig_events))
 
 for(k in 1:length(filt_cancer)){
     temp <- dep_map[which(dep_map$lineage_3 %like% c2consi[[k]]),]
@@ -145,17 +148,20 @@ for(k in 1:length(filt_cancer)){
 
     for(j in 1:length(acols)){
         tx <- min(tempx[[j]], na.rm=TRUE)
+        whm <- which(tempx[[j]] == tx)
         whp <- which(all_sig_events == acols[j])
         if(cvals[whp] > tx){
             cvals[whp] <- tx
+            wh <- which(tf_events_all[[k]] == acols[j])
+            svals[whp] <- tf_max_medians[[k]][wh]
+            celline[whp] <- paste(rownames(tempx)[whm],collapse=',')
+            tcancer[whp] <- filt_cancer[k]
         }
-        wh <- which(tf_events_all[[k]] == acols[j])
-        svals[whp] <- tf_max_medians[[k]][wh]
     }
 }
 
 
-pdata <- data.frame(GENE=all_sig_events, MINCHRONOS=cvals, MAXMEDIANDIFF=svals)
+pdata <- data.frame(CANCER=tcancer, GENE=all_sig_events, MINCHRONOS=cvals, MAXMEDIANDIFF=svals, CELLLINE=celline)
 pdata <- pdata[pdata$MINCHRONOS != 100, ] ## 33 had no values in the chronos evaluations --> removing those
 pdata <- pdata[pdata$MAXMEDIANDIFF != 100, ] 
 
@@ -175,6 +181,44 @@ theme_bw()+theme(axis.text.x = element_text(size = 1*basesize, angle = 60, vjust
 guides(fill='none')
 ggsave(ppx,filename=paste0(save_dir, "/Scatter_dependency.png"),width=4, height=3, dpi=400)
 
+pdatax <- pdata[abs(pdata$MAXMEDIANDIFF) > 0.2,  ]
+pdatax <- pdatax[order(pdatax$MINCHRONOS), ]
+
+
+# ###-------- table for top events ---------
+# tsym <- c()
+# tsty <- c()
+# tpos <- c()
+# tneg <- c()
+# tdiff <- c()
+# tsid <- c()
+# tcell <- c()
+# tchr <- c()
+
+# for(k in 1:length(filt)){
+
+#     temp <- data.table::fread(all_files[k], sep='\t')
+#     wh <- which(temp$FDR < fdr)
+#     tempx <- temp[wh, ]
+#     whx <- which(tempx$symbol %in% tfs$Gene_Symbol) ## number of AS events concerning TFs
+#     tempy <- tempx[whx,]
+
+#     ovrlap <- pdata[pdata$CANCER == filt_cancer[k], ]
+#     ovrlap <- ovrlap[order(ovrlap$MINCHRONOS),]
+
+#     tempz <- tempy[tempy$symbol %in% ovrlap, ]
+#     tempz <- tempz[order(-abs(tempz$MEDIAN_DIFF)), ]
+#     tsym <- c(tsym, tempz$symbol[1])
+#     tsty <- c(tsty, tempz$splice_type[1])
+#     tpos <- c(tpos, tempz$POS[1])
+#     tneg <- c(tneg, tempz$NEG[1])
+#     tdiff <- c(tdiff, tempz$MEDIAN_DIFF[1])
+#     tsid <- c(tsid, tempz$as_id[1])
+#     tchr <- c(tchr, )
+
+# }
+
+# ###---------------------------------------
 
 ## cumulative counts --
 # pdata <- data.frame(GENE=all_sig_events, MINCHRONOS=cvals)

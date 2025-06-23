@@ -20,6 +20,15 @@ dir.create(save_dir, recursive=TRUE)
 tfs <- data.table::fread('../data/filtered_TFs_curated.txt', sep='\t')
 ##----------------------------------------------------------------------
 
+# ##---- GRIs Using TFLink ----
+# tf_ensemb_map <- as.data.frame(data.table::fread('../data/TF_ensembl_uniprot.txt', sep='\t'))
+# diff_expr_files <- gtools::mixedsort(list.files('../data/Diff_expr', full.names=TRUE))
+# ensembl_gene_map <- data.table::fread('../data/ensembl_name_map.txt')
+# ##---- grn without direction downloaded from here: https://tflink.net/download/
+# grn <- as.data.frame(data.table::fread('../data/TFLink_Homo_sapiens_interactions_SS_simpleFormat_v1.0.tsv'))
+# grn_filt <- grn[grn$`Name.TF` %in% tfs$Gene_Symbol,]
+# ##---- 14,439 edges ----
+
 input_dir <- '../data/PSI_data'
 fdr <- 0.05
 all_files <- gtools::mixedsort(list.files(input_dir, pattern='*filtered_PSI_paired.txt', full.names=TRUE))
@@ -32,6 +41,7 @@ all_cancer <- substr(basename(all_files), 1,4)
 
 ##------------------------------------------------
 tf_events <- list()
+tf_events_genes <- list()
 for(k in 1:length(all_cancer)){
     temp <- data.table::fread(all_files[which(all_files %like% all_cancer[k])], sep='\t')
     wh <- which(temp$FDR < fdr)
@@ -40,6 +50,7 @@ for(k in 1:length(all_cancer)){
     tempy <- tempx[whx,]
     tempy <- tempy[order(-abs(tempy$MEDIAN_DIFF)), ]
     tf_events[[k]] <- unique(tempy$as_id) 
+    tf_events_genes[[k]] <- unique(tempy$symbol)
 }
 
 
@@ -204,7 +215,45 @@ for(k in 1:length(all_cancer)){
 
 
 
-##--- some KM plots?? ------------------------------
+# ##--- are regulated genes also survival associated? ------------------------------
+# tf_events_genes <- list()
+# for(k in 1:length(all_cancer)){
+#     temp <- data.table::fread(all_files[which(all_files %like% all_cancer[k])], sep='\t')
+#     wh <- which(temp$FDR < fdr)
+#     tempx <- temp[wh, ]
+#     whx <- which(tempx$as_id %in% events_tf_surv[[k]]) ## number of AS events concerning TFs
+#     tempy <- tempx[whx,]
+#     tf_events_genes[[k]] <- unique(tempy$symbol)
+# }
 
+
+# ##--- regulated genes ------------------------------------------
+# tf_regulated <- list()
+# for(k in 1:length(all_cancer)){
+#     tf_regulated[[k]] <- grn_filt[grn_filt$`Name.TF` %in% tf_events_genes[[k]], ]$`Name.Target`
+# }
+
+
+# ##--- which of the regulated genes are survival associated -----
+# ##-- Overlap with the survival associated genes ----
+# ##-- Study: Genome-wide identification and analysis of prognostic features in human cancers, Cell reports, 2022 ----
+# ##-- Downloaded https://www.cell.com/cms/10.1016/j.celrep.2022.110569/attachment/fd707bbf-fd26-494e-9d63-b497dd9b8bad/mmc2.xlsx ----
+# gene_surv <- openxlsx::read.xlsx('../data/mmc2.xlsx', 2)
+# gene_surv$Gene <- gsub("'","",gene_surv[[1]])
+# cnams <- colnames(gene_surv)
+# # gene_surv <- gene_surv[,-1]
+# # signif_can <- sapply(gene_surv, function(x) length(which(x > 1.96 | x < -1.96)))
+# tf_regulated_surv <- list()
+# tf_regulated_surv_all <- c()
+# for(k in 1:length(all_cancer)){
+#     wh <- which(cnams == all_cancer[k])
+#     temp <- gene_surv[,c(1,wh)]
+#     wh <- which(abs(temp[[2]]) > 3)
+#     # print(length(intersect(temp[[1]][wh], tf_regulated[[k]]))/length(tf_regulated[[k]]))
+#     print(length(intersect(temp[[1]][wh], tf_regulated[[k]]))/length(wh))
+
+#     tf_regulated_surv[[k]] <- intersect(temp[[1]][wh], tf_regulated[[k]])
+#     tf_regulated_surv_all <- union(tf_regulated_surv_all, intersect(temp[[1]][wh], tf_regulated[[k]]))
+# }
 
 

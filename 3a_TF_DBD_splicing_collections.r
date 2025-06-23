@@ -48,6 +48,7 @@ for(k in 1:length(all_cancer)){
     back_symbols <- tfs[which(tfs$Ensembl_Gene_ID %in% eid), ]$Gene_Symbol 
     ## Out of 1639 curated TFs, 1460 are also present in the exon mapping file
     ### So, the splice event information will be stored for these 1460 TFs
+    ## 1314 of the 1460 TFs have DBD informaiton in the Uniprot
     
     all_symbol <- intersect(all_symbolx, back_symbols)
     rest_symbols <- setdiff(back_symbols, all_symbol)

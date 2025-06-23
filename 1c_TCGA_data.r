@@ -93,12 +93,13 @@ for(k in 1:length(manifests)){
 
 	pvals <- mapply(function(x,y) wilcox.test(as.numeric(x), as.numeric(y), paired=TRUE)$p.value, normal_list_filt, cancer_list_filt)
 	
+	diff_normal_cancer <- mapply(function(x,y) as.numeric(x)-as.numeric(y), cancer_list_filt, normal_list_filt)
 	median_normal <- lapply(normal_list_filt, function(x) median(as.numeric(x)))
 	mean_normal <- lapply(normal_list_filt, function(x) mean(as.numeric(x)))
 	median_cancer <- lapply(cancer_list_filt, function(x) median(as.numeric(x)))
 	mean_cancer <- lapply(cancer_list_filt, function(x) mean(as.numeric(x)))
-	diff_median <- mapply(function(x,y) median(as.numeric(y)) - median(as.numeric(x)), normal_list_filt, cancer_list_filt)
-	diff_mean <- mapply(function(x,y) mean(as.numeric(y)) - mean(as.numeric(x)), normal_list_filt, cancer_list_filt)
+	diff_median <- lapply(diff_normal_cancer, function(x) median(as.numeric(x)))
+	diff_mean <- lapply(diff_normal_cancer, function(x) mean(as.numeric(x)))
 	qvals <- p.adjust(pvals, 'fdr')
 
 	##-- combine the normal and cancer data sets in one data frame
