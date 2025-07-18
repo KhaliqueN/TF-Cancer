@@ -1,6 +1,6 @@
 ##############################################################################################
 # Purpose: For each cancer type, see whether DBDs are removed by AS
-##############################################################################################
+#############################################################################################
 
 rm(list=ls())
 
@@ -26,7 +26,9 @@ tf_ensemb_map <- as.data.frame(data.table::fread('../data/TF_ensembl_uniprot.txt
 tcga_map <- data.table::fread(paste0(input_dir,'/TCGA_SpliceSeq_Gene_Structure.txt'))
 
 all_files <- gtools::mixedsort(list.files(input_dir, pattern='*filtered_PSI_paired.txt', full.names=TRUE))
+all_files <- all_files[-4]
 all_filesx <- list.files(input_dirx, pattern='*.txt', full.names=TRUE)
+all_filesx <- all_filesx[-4]
 all_cancer <- substr(basename(all_files), 1,4)
 ## Some of the event coordinates frm TCGA splice seq does not overlap to any of the exons mapped from the canonical protein
 ## sequence from Uniprot. This is because the canonical seqeunce is not always the longest.
@@ -36,7 +38,9 @@ all_cancer <- substr(basename(all_files), 1,4)
 for(k in 1:length(all_cancer)){
 
     temp <- data.table::fread(all_files[k], sep='\t')
-    wh <- which(temp$FDR < fdr)
+    wha <- which(temp$FDR < fdr)
+    whb <- which(abs(temp$MEAN_NORMAL-temp$MEAN_CANCER) > fdr)
+    wh <- intersect(wha, whb)
     tempx <- temp[wh, ]
     tempy <- tempx[which(toupper(tempx$symbol) %in% tfs$Gene_Symbol), ]
     tempz <- tempy[tempy$splice_type == 'ES', ]
@@ -68,7 +72,7 @@ for(k in 1:length(all_cancer)){
             nt_start <- temp_map$NT1 ## for each AA position
             nt_end <- temp_map$NT3
             ##------------------------------------------------------------------------
-            as_event <- rep('-', length(temp_map[[1]]))
+            as_event <- vector(mode = "list", length = length(temp_map[[1]]))#rep('-', length(temp_map[[1]]))
             temp_cancer <- rep('-', length(temp_map[[1]]))
 
             for(jj in 1:length(tempz1[[1]])){ ## for each splicing event
@@ -95,15 +99,14 @@ for(k in 1:length(all_cancer)){
                         
                         if(wh1 & wh2){ 
                             ##-- store the event id at the protein positions not included in the protein product of the sample with lower PSI----
-                            as_event[h] <- tempz2$as_id
-                            # print(paste0(j,':',i))
+                            as_event[[h]] <- union(as_event[[h]],tempz2$as_id)
                         }
                     }
 
                 }
             }
 
-            temp_map$ES <- as_event
+            temp_map$ES <- unlist(lapply(as_event, function(x) paste(x, collapse=';')))
             data.table::fwrite(temp_map,paste0(output_dir,'/',temp_uniprot,'_',all_cancer[k],'.txt'), sep='\t', row.names=FALSE, quote=FALSE)
 
         }
@@ -131,7 +134,9 @@ for(k in 1:length(all_cancer)){
 for(k in 1:length(all_cancer)){
 
     temp <- data.table::fread(all_files[k], sep='\t')
-    wh <- which(temp$FDR < fdr)
+    wha <- which(temp$FDR < fdr)
+    whb <- which(abs(temp$MEAN_NORMAL-temp$MEAN_CANCER) > fdr)
+    wh <- intersect(wha, whb)
     tempx <- temp[wh, ]
     tempy <- tempx[which(toupper(tempx$symbol) %in% tfs$Gene_Symbol), ]
     tempz <- tempy[tempy$splice_type == 'AP', ]
@@ -162,7 +167,7 @@ for(k in 1:length(all_cancer)){
             nt_start <- temp_map$NT1 ## for each AA position
             nt_end <- temp_map$NT3
             ##------------------------------------------------------------------------
-            as_event <- rep('-', length(temp_map[[1]]))
+            as_event <- vector(mode = "list", length = length(temp_map[[1]]))#rep('-', length(temp_map[[1]]))
             temp_cancer <- rep('-', length(temp_map[[1]]))
 
             for(jj in 1:length(tempz1[[1]])){ ## for each splicing event
@@ -190,14 +195,14 @@ for(k in 1:length(all_cancer)){
                         
                         if(whx){ 
                             ##-- store the event id at the protein positions not included in the protein product of the sample with higher PSI ----
-                            as_event[h] <- tempz2$as_id
+                            as_event[[h]] <- union(as_event[[h]],tempz2$as_id)
                         }
                     }
 
                 }
             }
 
-            temp_map$AP <- as_event
+            temp_map$AP <- unlist(lapply(as_event, function(x) paste(x, collapse=';')))
             data.table::fwrite(temp_map,paste0(output_dir,'/',temp_uniprot,'_',all_cancer[k],'.txt'), sep='\t', row.names=FALSE, quote=FALSE)
 
         }
@@ -226,7 +231,9 @@ for(k in 1:length(all_cancer)){
 for(k in 1:length(all_cancer)){
 
     temp <- data.table::fread(all_files[k], sep='\t')
-    wh <- which(temp$FDR < fdr)
+    wha <- which(temp$FDR < fdr)
+    whb <- which(abs(temp$MEAN_NORMAL-temp$MEAN_CANCER) > fdr)
+    wh <- intersect(wha, whb)
     tempx <- temp[wh, ]
     tempy <- tempx[which(toupper(tempx$symbol) %in% tfs$Gene_Symbol), ]
     tempz <- tempy[tempy$splice_type == 'AT', ]
@@ -257,7 +264,7 @@ for(k in 1:length(all_cancer)){
             nt_start <- temp_map$NT1 ## for each AA position
             nt_end <- temp_map$NT3
             ##------------------------------------------------------------------------
-            as_event <- rep('-', length(temp_map[[1]]))
+            as_event <- vector(mode = "list", length = length(temp_map[[1]]))#rep('-', length(temp_map[[1]]))
             temp_cancer <- rep('-', length(temp_map[[1]]))
 
             for(jj in 1:length(tempz1[[1]])){ ## for each splicing event
@@ -282,14 +289,14 @@ for(k in 1:length(all_cancer)){
                         
                         if(whx){ 
                             ##-- store the event id and the cancer type ---
-                            as_event[h] <- tempz2$as_id
+                            as_event[[h]] <- union(as_event[[h]],tempz2$as_id)
                         }
                     }
 
                 }
             }
 
-            temp_map$AT <- as_event
+            temp_map$AT <- unlist(lapply(as_event, function(x) paste(x, collapse=';')))
             data.table::fwrite(temp_map,paste0(output_dir,'/',temp_uniprot,'_',all_cancer[k],'.txt'), sep='\t', row.names=FALSE, quote=FALSE)
 
         }
@@ -318,7 +325,9 @@ for(k in 1:length(all_cancer)){
 for(k in 1:length(all_cancer)){
 
     temp <- data.table::fread(all_files[k], sep='\t')
-    wh <- which(temp$FDR < fdr)
+    wha <- which(temp$FDR < fdr)
+    whb <- which(abs(temp$MEAN_NORMAL-temp$MEAN_CANCER) > fdr)
+    wh <- intersect(wha, whb)
     tempx <- temp[wh, ]
     tempy <- tempx[which(toupper(tempx$symbol) %in% tfs$Gene_Symbol), ]
     tempz <- tempy[tempy$splice_type == 'AD', ]
@@ -349,7 +358,7 @@ for(k in 1:length(all_cancer)){
             nt_start <- temp_map$NT1 ## for each AA position
             nt_end <- temp_map$NT3
             ##------------------------------------------------------------------------
-            as_event <- rep('-', length(temp_map[[1]]))
+            as_event <- vector(mode = "list", length = length(temp_map[[1]]))#rep('-', length(temp_map[[1]]))
             temp_cancer <- rep('-', length(temp_map[[1]]))
 
             for(jj in 1:length(tempz1[[1]])){ ## for each splicing event
@@ -375,14 +384,14 @@ for(k in 1:length(all_cancer)){
                         }
                         
                         if(wh1 & wh2){ 
-                            as_event[h] <- tempz2$as_id
+                            as_event[[h]] <- union(as_event[[h]],tempz2$as_id)
                         }
                     }
 
                 }
             }
 
-            temp_map$AD <- as_event
+            temp_map$AD <- unlist(lapply(as_event, function(x) paste(x, collapse=';')))
             data.table::fwrite(temp_map,paste0(output_dir,'/',temp_uniprot,'_',all_cancer[k],'.txt'), sep='\t', row.names=FALSE, quote=FALSE)
 
         }
@@ -411,7 +420,9 @@ for(k in 1:length(all_cancer)){
 for(k in 1:length(all_cancer)){
 
     temp <- data.table::fread(all_files[k], sep='\t')
-    wh <- which(temp$FDR < fdr)
+    wha <- which(temp$FDR < fdr)
+    whb <- which(abs(temp$MEAN_NORMAL-temp$MEAN_CANCER) > fdr)
+    wh <- intersect(wha, whb)
     tempx <- temp[wh, ]
     tempy <- tempx[which(toupper(tempx$symbol) %in% tfs$Gene_Symbol), ]
     tempz <- tempy[tempy$splice_type == 'AA', ]
@@ -442,7 +453,7 @@ for(k in 1:length(all_cancer)){
             nt_start <- temp_map$NT1 ## for each AA position
             nt_end <- temp_map$NT3
             ##------------------------------------------------------------------------
-            as_event <- rep('-', length(temp_map[[1]]))
+            as_event <- vector(mode = "list", length = length(temp_map[[1]]))#rep('-', length(temp_map[[1]]))
             temp_cancer <- rep('-', length(temp_map[[1]]))
 
             for(jj in 1:length(tempz1[[1]])){ ## for each splicing event
@@ -468,14 +479,14 @@ for(k in 1:length(all_cancer)){
                         }
                         
                         if(wh1 & wh2){ 
-                            as_event[h] <- tempz2$as_id
+                            as_event[[h]] <- union(as_event[[h]],tempz2$as_id)
                         }
                     }
 
                 }
             }
 
-            temp_map$AA <- as_event
+            temp_map$AA <- unlist(lapply(as_event, function(x) paste(x, collapse=';')))
             data.table::fwrite(temp_map,paste0(output_dir,'/',temp_uniprot,'_',all_cancer[k],'.txt'), sep='\t', row.names=FALSE, quote=FALSE)
 
         }
@@ -504,7 +515,9 @@ for(k in 1:length(all_cancer)){
 for(k in 1:length(all_cancer)){
 
     temp <- data.table::fread(all_files[k], sep='\t')
-    wh <- which(temp$FDR < fdr)
+    wha <- which(temp$FDR < fdr)
+    whb <- which(abs(temp$MEAN_NORMAL-temp$MEAN_CANCER) > fdr)
+    wh <- intersect(wha, whb)
     tempx <- temp[wh, ]
     tempy <- tempx[which(toupper(tempx$symbol) %in% tfs$Gene_Symbol), ]
     tempz <- tempy[tempy$splice_type == 'ME', ]
@@ -537,7 +550,7 @@ for(k in 1:length(all_cancer)){
                 nt_start <- temp_map$NT1 ## for each AA position
                 nt_end <- temp_map$NT3
                 ##------------------------------------------------------------------------
-                as_event <- rep('-', length(temp_map[[1]]))
+                as_event <- vector(mode = "list", length = length(temp_map[[1]]))#rep('-', length(temp_map[[1]]))
                 temp_cancer <- rep('-', length(temp_map[[1]]))
 
                 for(jj in 1:length(tempz1[[1]])){ ## for each splicing event
@@ -567,7 +580,7 @@ for(k in 1:length(all_cancer)){
                                 
                                 if(wh1 & wh2){ 
                                     ##-- store the event id and the cancer type ---
-                                    as_event[h] <- tempz2$as_id
+                                    as_event[[h]] <- union(as_event[[h]],tempz2$as_id)
                                     # print(paste0(j,':',i))
                                 }
                             }
@@ -577,7 +590,7 @@ for(k in 1:length(all_cancer)){
                     }
                 }
 
-                temp_map$ME <- as_event
+                temp_map$ME <- unlist(lapply(as_event, function(x) paste(x, collapse=';')))
                 data.table::fwrite(temp_map,paste0(output_dir,'/',temp_uniprot,'_',all_cancer[k],'.txt'), sep='\t', row.names=FALSE, quote=FALSE)
 
             }
