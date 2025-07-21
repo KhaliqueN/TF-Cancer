@@ -445,6 +445,7 @@ for(k in 1:length(transcript_uni_ids)){
 numbers_only <- function(x) !grepl("\\D", x)
 store_dir <- '../data/uniprot_Ensembl_Exon_map'
 data.table::fwrite(uniprot_name_id_map,'../data/uniprot_name_id_map.txt',sep='\t', row.names=FALSE, quote=FALSE)
+
 uniprot_name_id_map <- data.table::fread('../data/uniprot_name_id_map.txt')
 allfiles <- list.files(store_dir,full.names=TRUE)
 DBDs <- c()
@@ -478,23 +479,24 @@ for(k in 1:length(allfiles)){
             dna_bind_domain <- gsub('\\"',"",strsplit(temp_uniprot_file[dna_bind_pos[j]+1],"=")[[1]][2])
             dna_bind_domain <- strsplit(dna_bind_domain,'[;]')[[1]][1]
             if(is.na(dna_bind_domain)){ ## sometimes the domain info after the DNA_BIND line is missing, which gives NA
-                next
+                dna_bind_domain <- 'Unknown'
+            }else if(dna_bind_domain %like% 'ECO:'){ ### These are not "proper" DNA binding domains
+                dna_bind_domain <- 'Unknown'
+            }else{
+                dnaxx <- strsplit(dna_bind_domain,'[ ]')
+                dnaxxf <- dnaxx[[1]][length(dnaxx[[1]])]
+                loop <- length(dnaxx[[1]])-1
+                if(numbers_only(dnaxxf)){
+                    dnaxxp <- dnaxx[[1]][1]
+                    if(loop > 1){
+                        for(hh in 2:loop){
+                            dnaxxp <- paste(dnaxxp,dnaxx[[1]][hh])
+                        }
+                    } 
+                    dna_bind_domain <- dnaxxp
+                }
             }
-            if(dna_bind_domain %like% 'ECO:'){ ### These are not "proper" DNA binding domains
-                next
-            }
-            dnaxx <- strsplit(dna_bind_domain,'[ ]')
-            dnaxxf <- dnaxx[[1]][length(dnaxx[[1]])]
-            loop <- length(dnaxx[[1]])-1
-            if(numbers_only(dnaxxf)){
-                dnaxxp <- dnaxx[[1]][1]
-                if(loop > 1){
-                    for(hh in 2:loop){
-                        dnaxxp <- paste(dnaxxp,dnaxx[[1]][hh])
-                    }
-                } 
-                dna_bind_domain <- dnaxxp
-            }
+            
             wh <- which(temp_file$UNIPROT_SEQ_NUM %in% dna_bseq)
             dna_bind[wh] <- dna_bind_domain
             DBDs <- c(DBDs, dna_bind_domain)
@@ -525,7 +527,7 @@ for(k in 1:length(allfiles)){
     
     temp_file$DBD <- dna_bind
     DBDs_list[[k]] <- temp_binds
-    # data.table::fwrite(temp_file, paste0(store_dir,'/',temp_uniprot,'.txt'), row.names=FALSE, sep='\t', quote=FALSE)
+    data.table::fwrite(temp_file, paste0(store_dir,'/',temp_uniprot,'.txt'), row.names=FALSE, sep='\t', quote=FALSE)
 
     tprot <- c(tprot, temp_uniprot)
     tdbd <- c(tdbd, paste(unique(setdiff(temp_binds,'-')), collapse=';'))
@@ -535,60 +537,62 @@ for(k in 1:length(allfiles)){
 
 
 
-##--- check if the DBD mappings match with what is reported in the "human transcription factors" paper from 2018 --
-tdbd_dt <- data.frame(Uniprotswissprot=tprot, DBD=tdbd)
-emap <- data.table::fread('../data/ensembl_name_map.txt')
-emap <- unique(emap[,c(8,9)])
-tdbdtx <- merge(tdbd_dt, emap, by='Uniprotswissprot')
-
-xx <- "1-s2.0-S0092867418301065-mmc2.xlsx"
-tf_file <- readxl::read_excel(paste0('../data/',xx),2)
-tf_file <- as.data.frame(tf_file)
-tf_file1 <- tf_file[,2:3]
-tf_file1 <- tf_file1[-1,]
-colnames(tf_file1) <- c('HGNC_symbol','DBD')
-
-tdbdtz <- merge(tf_file1, tdbdtx, by='HGNC_symbol')
-data.table::fwrite(tdbdtz, '../data/DBD_mapping.csv')
-##--------------------------------------------------------------------------------------------
-
-##-- 1564 out of 2460 TFs have DBD info ------------------------------------------------------------
-dbds <- plyr::count(DBDs)
 
 
-##--- plots for summary of DBDs -----
-DBDs_list_uniq <- lapply(DBDs_list, function(x) unique(x))
+# ##--- check if the DBD mappings match with what is reported in the "human transcription factors" paper from 2018 --
+# tdbd_dt <- data.frame(Uniprotswissprot=tprot, DBD=tdbd)
+# emap <- data.table::fread('../data/ensembl_name_map.txt')
+# emap <- unique(emap[,c(8,9)])
+# tdbdtx <- merge(tdbd_dt, emap, by='Uniprotswissprot')
 
-mlen1 <- lengths(DBDs_list)
-mlen2 <- lengths(DBDs_list_uniq)
+# xx <- "1-s2.0-S0092867418301065-mmc2.xlsx"
+# tf_file <- readxl::read_excel(paste0('../data/',xx),2)
+# tf_file <- as.data.frame(tf_file)
+# tf_file1 <- tf_file[,2:3]
+# tf_file1 <- tf_file1[-1,]
+# colnames(tf_file1) <- c('HGNC_symbol','DBD')
 
-wh1 <- which(mlen1 == 1) ## 663 TFs with a single DBD
+# tdbdtz <- merge(tf_file1, tdbdtx, by='HGNC_symbol')
+# data.table::fwrite(tdbdtz, '../data/DBD_mapping.csv')
+# ##--------------------------------------------------------------------------------------------
 
-wh2a <- which(mlen2 == 1)
-wh2b <- which(mlen1 > 1)
-wh2 <- intersect(wh2a, wh2b) ## 720 TFs with multiple DBDs of the same type (Homotypic DBDs)
-
-tempxx <- unlist(DBDs_list_uniq[wh2])
-c2h2 <- which(tempxx == 'C2H2-type')
-wh2a <- wh2[c2h2] ## 622 TFs with multiple DBDs of C2H2-type (Homotypic DBDs)
-
-
-
-## 98 TFs with multiple DBDs of the same type other than C2H2 (Homotypic DBDs)
-wh2b <- setdiff(wh2, wh2a) 
-homo <- DBDs_list[wh2b]
-homo_len <- data.frame(DBD=unlist(lapply(homo, function(x) unique(x))), NUM=lengths(homo))
-homo_dbd <- unique(homo_len$DBD)
-max_freq <- c()
-for(k in 1:length(homo_dbd)){
-    temp <- homo_len[homo_len$DBD == homo_dbd[k], ]
-    max_freq <- c(max_freq, max(temp$NUM))
-}
-homo_lenx <- data.frame(DBD=homo_dbd, MAX_NUM=max_freq)
+# ##-- 1564 out of 2460 TFs have DBD info ------------------------------------------------------------
+# dbds <- plyr::count(DBDs)
 
 
-## 181 TFs with multiple DBD types (Heterotypic DBDs)
-wh3 <- which(mlen2 > 1) 
+# ##--- plots for summary of DBDs -----
+# DBDs_list_uniq <- lapply(DBDs_list, function(x) unique(x))
+
+# mlen1 <- lengths(DBDs_list)
+# mlen2 <- lengths(DBDs_list_uniq)
+
+# wh1 <- which(mlen1 == 1) ## 663 TFs with a single DBD
+
+# wh2a <- which(mlen2 == 1)
+# wh2b <- which(mlen1 > 1)
+# wh2 <- intersect(wh2a, wh2b) ## 720 TFs with multiple DBDs of the same type (Homotypic DBDs)
+
+# tempxx <- unlist(DBDs_list_uniq[wh2])
+# c2h2 <- which(tempxx == 'C2H2-type')
+# wh2a <- wh2[c2h2] ## 622 TFs with multiple DBDs of C2H2-type (Homotypic DBDs)
+
+
+
+# ## 98 TFs with multiple DBDs of the same type other than C2H2 (Homotypic DBDs)
+# wh2b <- setdiff(wh2, wh2a) 
+# homo <- DBDs_list[wh2b]
+# homo_len <- data.frame(DBD=unlist(lapply(homo, function(x) unique(x))), NUM=lengths(homo))
+# homo_dbd <- unique(homo_len$DBD)
+# max_freq <- c()
+# for(k in 1:length(homo_dbd)){
+#     temp <- homo_len[homo_len$DBD == homo_dbd[k], ]
+#     max_freq <- c(max_freq, max(temp$NUM))
+# }
+# homo_lenx <- data.frame(DBD=homo_dbd, MAX_NUM=max_freq)
+
+
+# ## 181 TFs with multiple DBD types (Heterotypic DBDs)
+# wh3 <- which(mlen2 > 1) 
 
 
 

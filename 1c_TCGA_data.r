@@ -90,16 +90,16 @@ for(k in 1:length(manifests)){
 	# neg_flag <- mapply(function(x,y) x/y, neg_len, allen)
 	# neg_wh <- which(neg_flag == 1)
 
-
+	## Here we perform signed-rank test
 	pvals <- mapply(function(x,y) wilcox.test(as.numeric(x), as.numeric(y), paired=TRUE)$p.value, normal_list_filt, cancer_list_filt)
 	
-	diff_normal_cancer <- mapply(function(x,y) as.numeric(x)-as.numeric(y), cancer_list_filt, normal_list_filt)
+	# diff_normal_cancer <- mapply(function(x,y) as.numeric(x)-as.numeric(y), cancer_list_filt, normal_list_filt)
 	median_normal <- lapply(normal_list_filt, function(x) median(as.numeric(x)))
 	mean_normal <- lapply(normal_list_filt, function(x) mean(as.numeric(x)))
 	median_cancer <- lapply(cancer_list_filt, function(x) median(as.numeric(x)))
 	mean_cancer <- lapply(cancer_list_filt, function(x) mean(as.numeric(x)))
-	diff_median <- lapply(diff_normal_cancer, function(x) median(as.numeric(x)))
-	diff_mean <- lapply(diff_normal_cancer, function(x) mean(as.numeric(x)))
+	diff_median <- lapply(can_norm_diff, function(x) median(as.numeric(x)))
+	diff_mean <- lapply(can_norm_diff, function(x) mean(as.numeric(x)))
 	qvals <- p.adjust(pvals, 'fdr')
 
 	##-- combine the normal and cancer data sets in one data frame

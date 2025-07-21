@@ -120,7 +120,7 @@ for(k in 1:length(all_cancer)){
         which(tfs$Gene_Symbol == rest_symbols[j])])]
 
         temp_map <- data.table::fread(paste0(input_dirx,'/',temp_uniprot,'.txt'))
-        as_event <- rep('-', length(temp_map[[1]]))
+        as_event <- rep('', length(temp_map[[1]]))
         temp_map$ES <- as_event
         data.table::fwrite(temp_map,paste0(output_dir,'/',temp_uniprot,'_',all_cancer[k],'.txt'), sep='\t', row.names=FALSE, quote=FALSE)
 
@@ -217,7 +217,7 @@ for(k in 1:length(all_cancer)){
         which(tfs$Gene_Symbol == rest_symbols[j])])]
 
         temp_map <- data.table::fread(paste0(output_dir,'/',temp_uniprot,'_',all_cancer[k],'.txt'))
-        as_event <- rep('-', length(temp_map[[1]]))
+        as_event <- rep('', length(temp_map[[1]]))
         temp_map$AP <- as_event
         data.table::fwrite(temp_map,paste0(output_dir,'/',temp_uniprot,'_',all_cancer[k],'.txt'), sep='\t', row.names=FALSE, quote=FALSE)
 
@@ -311,7 +311,7 @@ for(k in 1:length(all_cancer)){
         which(tfs$Gene_Symbol == rest_symbols[j])])]
 
         temp_map <- data.table::fread(paste0(output_dir,'/',temp_uniprot,'_',all_cancer[k],'.txt'))
-        as_event <- rep('-', length(temp_map[[1]]))
+        as_event <- rep('', length(temp_map[[1]]))
         temp_map$AT <- as_event
         data.table::fwrite(temp_map,paste0(output_dir,'/',temp_uniprot,'_',all_cancer[k],'.txt'), sep='\t', row.names=FALSE, quote=FALSE)
 
@@ -406,7 +406,7 @@ for(k in 1:length(all_cancer)){
         which(tfs$Gene_Symbol == rest_symbols[j])])]
 
         temp_map <- data.table::fread(paste0(output_dir,'/',temp_uniprot,'_',all_cancer[k],'.txt'))
-        as_event <- rep('-', length(temp_map[[1]]))
+        as_event <- rep('', length(temp_map[[1]]))
         temp_map$AD <- as_event
         data.table::fwrite(temp_map,paste0(output_dir,'/',temp_uniprot,'_',all_cancer[k],'.txt'), sep='\t', row.names=FALSE, quote=FALSE)
 
@@ -501,7 +501,7 @@ for(k in 1:length(all_cancer)){
         which(tfs$Gene_Symbol == rest_symbols[j])])]
 
         temp_map <- data.table::fread(paste0(output_dir,'/',temp_uniprot,'_',all_cancer[k],'.txt'))
-        as_event <- rep('-', length(temp_map[[1]]))
+        as_event <- rep('', length(temp_map[[1]]))
         temp_map$AA <- as_event
         data.table::fwrite(temp_map,paste0(output_dir,'/',temp_uniprot,'_',all_cancer[k],'.txt'), sep='\t', row.names=FALSE, quote=FALSE)
 
@@ -605,7 +605,7 @@ for(k in 1:length(all_cancer)){
             which(tfs$Gene_Symbol == rest_symbols[j])])]
 
             temp_map <- data.table::fread(paste0(output_dir,'/',temp_uniprot,'_',all_cancer[k],'.txt'))
-            as_event <- rep('-', length(temp_map[[1]]))
+            as_event <- rep('', length(temp_map[[1]]))
             temp_map$ME <- as_event
             data.table::fwrite(temp_map,paste0(output_dir,'/',temp_uniprot,'_',all_cancer[k],'.txt'), sep='\t', row.names=FALSE, quote=FALSE)
 
