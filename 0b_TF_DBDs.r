@@ -449,10 +449,13 @@ data.table::fwrite(uniprot_name_id_map,'../data/uniprot_name_id_map.txt',sep='\t
 uniprot_name_id_map <- data.table::fread('../data/uniprot_name_id_map.txt')
 allfiles <- list.files(store_dir,full.names=TRUE)
 DBDs <- c()
+pro_dbd <- c()
 DBDs_list <- vector(mode = "list", length = length(allfiles))
 
 tprot <- c()
 tdbd <- c()
+tgene <- c()
+tevi <- c()
 
 for(k in 1:length(allfiles)){
 
@@ -469,47 +472,73 @@ for(k in 1:length(allfiles)){
     dna_bind_pos2 <- which(temp_uniprot_file %like% 'ZN_FING')
     dna_bind_pos <- union(dna_bind_pos1, dna_bind_pos2)
     dna_bind <- rep('-', length(temp_file[[1]]))
+    PROSITE <- rep('-', length(temp_file[[1]]))
+    EVID <- rep('-', length(temp_file[[1]]))
     temp_binds <- c()
     ## loop for DNA_BIND and ZN_FING---
     if(length(dna_bind_pos) != 0){
         for(j in 1:length(dna_bind_pos)){
             temp_dna <- strsplit(temp_uniprot_file[dna_bind_pos[j]],"\\s+")[[1]][3]
             dna_bseq <- seq(as.numeric(strsplit(temp_dna, '[..]')[[1]][1]), as.numeric(strsplit(temp_dna, '[..]')[[1]][3]))
-            # dna_bind_domain <- gsub('\\"',"",strsplit(strsplit(temp_uniprot_file[dna_bind_pos[j]+1],"\\s+")[[1]][2],'=')[[1]][2])
-            dna_bind_domain <- gsub('\\"',"",strsplit(temp_uniprot_file[dna_bind_pos[j]+1],"=")[[1]][2])
-            dna_bind_domain <- strsplit(dna_bind_domain,'[;]')[[1]][1]
-            if(is.na(dna_bind_domain)){ ## sometimes the domain info after the DNA_BIND line is missing, which gives NA
+
+            temp_next <- temp_uniprot_file[dna_bind_pos[j]+1]
+            if(temp_next %like% 'note='){
+                dna_bind_domain <- gsub('\\"',"",strsplit(temp_next,"=")[[1]][2])
+            }else if(temp_next %like% 'evidence='){
                 dna_bind_domain <- 'Unknown'
-            }else if(dna_bind_domain %like% 'ECO:'){ ### These are not "proper" DNA binding domains
-                dna_bind_domain <- 'Unknown'
+                evidence <- strsplit(gsub('\\"',"",strsplit(temp_next,"=")[[1]][2]),"[|]")[[1]][1]
+                prorule <- strsplit(gsub('\\"',"",strsplit(temp_next,"[|]")[[1]][2]),'[:]')[[1]][2]
             }else{
-                dnaxx <- strsplit(dna_bind_domain,'[ ]')
-                dnaxxf <- dnaxx[[1]][length(dnaxx[[1]])]
-                loop <- length(dnaxx[[1]])-1
-                if(numbers_only(dnaxxf)){
-                    dnaxxp <- dnaxx[[1]][1]
-                    if(loop > 1){
-                        for(hh in 2:loop){
-                            dnaxxp <- paste(dnaxxp,dnaxx[[1]][hh])
-                        }
-                    } 
-                    dna_bind_domain <- dnaxxp
-                }
+                dna_bind_domain <- 'Unknown'
+                evidence <- NA
+                prorule <- NA
+            }
+
+            temp_next <- temp_uniprot_file[dna_bind_pos[j]+2]
+            if(temp_next %like% 'evidence='){
+                evidence <- strsplit(gsub('\\"',"",strsplit(temp_next,"=")[[1]][2]),"[|]")[[1]][1]
+                prorule <- strsplit(gsub('\\"',"",strsplit(temp_next,"[|]")[[1]][2]),'[:]')[[1]][2]
+            }else{
+                evidence <- NA
+                prorule <- NA
+            }
+            
+            dna_bind_domain <- strsplit(dna_bind_domain,'[;]')[[1]][1]
+
+            dnaxx <- strsplit(dna_bind_domain,'[ ]')
+            dnaxxf <- dnaxx[[1]][length(dnaxx[[1]])]
+            loop <- length(dnaxx[[1]])-1
+            if(numbers_only(dnaxxf)){
+                dnaxxp <- dnaxx[[1]][1]
+                if(loop > 1){
+                    for(hh in 2:loop){
+                        dnaxxp <- paste(dnaxxp,dnaxx[[1]][hh])
+                    }
+                } 
+                dna_bind_domain <- dnaxxp
             }
             
             wh <- which(temp_file$UNIPROT_SEQ_NUM %in% dna_bseq)
             dna_bind[wh] <- dna_bind_domain
+            PROSITE[wh] <- substr(prorule,1,8)
+            EVID[wh] <- evidence
+
             DBDs <- c(DBDs, dna_bind_domain)
+            pro_dbd <- c(pro_dbd, substr(prorule,1,8))
+            tgene <- c(tgene, uni_name)
+            tevi <- c(tevi, evidence)
             temp_binds <- c(temp_binds, dna_bind_domain)
         }
     }
+    # if('Homeobox' %in% temp_binds){
+    #     break
+    # }
 
     ##--- loop for bHLH ------
     to_consider_domains <- c('bHLH','bZIP','MADS-box')
     dna_bind_pos <- which(temp_uniprot_file %like% 'DOMAIN')
 
     if(length(dna_bind_pos) != 0) {
-
         for(j in 1:length(dna_bind_pos)){
             # dna_bind_domain <- gsub('\\"',"",strsplit(strsplit(temp_uniprot_file[dna_bind_pos[j]+1],"\\s+")[[1]][2],'=')[[1]][2])
             dna_bind_domain <- gsub('\\"',"",strsplit(temp_uniprot_file[dna_bind_pos[j]+1],"=")[[1]][2])
@@ -517,15 +546,34 @@ for(k in 1:length(allfiles)){
             if(dna_bind_domain %in% to_consider_domains){
                 temp_dna <- strsplit(temp_uniprot_file[dna_bind_pos[j]],"\\s+")[[1]][3]
                 dna_bseq <- seq(as.numeric(strsplit(temp_dna, '[..]')[[1]][1]), as.numeric(strsplit(temp_dna, '[..]')[[1]][3]))
+
+                temp_next <- temp_uniprot_file[dna_bind_pos[j]+2]
+                if(temp_next %like% 'evidence='){
+                    evidence <- strsplit(gsub('\\"',"",strsplit(temp_next,"=")[[1]][2]),"[|]")[[1]][1]
+                    prorule <- strsplit(gsub('\\"',"",strsplit(temp_next,"[|]")[[1]][2]),'[:]')[[1]][2]
+                }else{
+                    evidence <- NA
+                    prorule <- NA
+                }
+
                 wh <- which(temp_file$UNIPROT_SEQ_NUM %in% dna_bseq)
                 dna_bind[wh] <- dna_bind_domain
+                PROSITE[wh] <- substr(prorule,1,8)
+                EVID[wh] <- evidence
+            
                 DBDs <- c(DBDs, dna_bind_domain)
+                pro_dbd <- c(pro_dbd, substr(prorule,1,8))
+                tgene <- c(tgene, uni_name)
+                tevi <- c(tevi, evidence)
                 temp_binds <- c(temp_binds, dna_bind_domain)
             } 
         }
     }
     
     temp_file$DBD <- dna_bind
+    # temp_file$PROSITE <- PROSITE
+    # temp_file$EVIDENCE <- EVID
+
     DBDs_list[[k]] <- temp_binds
     data.table::fwrite(temp_file, paste0(store_dir,'/',temp_uniprot,'.txt'), row.names=FALSE, sep='\t', quote=FALSE)
 
@@ -535,8 +583,13 @@ for(k in 1:length(allfiles)){
 
 }
 
+## Sometimes there are more than one PROSITE rule for the same DBD
+# ##--- save prosite id dbd name mapp
+# temp_dbd_map <- data.frame(PROSITE=pro_dbd, DBD=DBDs, GENE=tgene, EVI=tevi)
+# fwrite(temp_dbd_map, '../data/Prosite_DBD_map.txt', sep='\t', row.names=FALSE, quote=FALSE)
 
-
+## Evidences to consider: ECO:0000250, ECO:0000255, ECO:0000269, ECO:0000305, ECO:0007744, ECO:0000303 --> basically all annotating a DBD
+## consider everything
 
 
 # ##--- check if the DBD mappings match with what is reported in the "human transcription factors" paper from 2018 --

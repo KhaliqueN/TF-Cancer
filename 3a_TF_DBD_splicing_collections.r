@@ -521,98 +521,95 @@ for(k in 1:length(all_cancer)){
     tempx <- temp[wh, ]
     tempy <- tempx[which(toupper(tempx$symbol) %in% tfs$Gene_Symbol), ]
     tempz <- tempy[tempy$splice_type == 'ME', ]
+
+    all_symbolx <- gtools::mixedsort(unique(tempz$symbol))
+
+    ##--- only the processed TFs --- 1-to-1 mapped transcripts to TFs
+    tid <- unlist(lapply(strsplit(unlist(lapply(strsplit(basename(all_filesx), '[_]'),'[[',1)), '[.]'),'[[',1))
+    eid <- tf_ensemb_map[which(tf_ensemb_map$Uniprotswissprot %in% tid),]$Ensembl_gene_id
+    back_symbols <- tfs[which(tfs$Ensembl_Gene_ID %in% eid), ]$Gene_Symbol 
+    ## Out of 1639 curated TFs, 1460 are also present in the exon mapping file
+    ### So, the splice event information will be stored for these 1460 TFs
     
-    if(nrow(tempz) != 0){
-        all_symbolx <- gtools::mixedsort(unique(tempz$symbol))
+    all_symbol <- intersect(all_symbolx, back_symbols)
+    rest_symbols <- setdiff(back_symbols, all_symbol)
 
-        ##--- only the processed TFs --- 1-to-1 mapped transcripts to TFs
-        tid <- unlist(lapply(strsplit(unlist(lapply(strsplit(basename(all_filesx), '[_]'),'[[',1)), '[.]'),'[[',1))
-        eid <- tf_ensemb_map[which(tf_ensemb_map$Uniprotswissprot %in% tid),]$Ensembl_gene_id
-        back_symbols <- tfs[which(tfs$Ensembl_Gene_ID %in% eid), ]$Gene_Symbol 
-        ## Out of 1639 curated TFs, 1460 are also present in the exon mapping file
-        ### So, the splice event information will be stored for these 1460 TFs
-        
-        all_symbol <- intersect(all_symbolx, back_symbols)
-        rest_symbols <- setdiff(back_symbols, all_symbol)
+    if(length(all_symbol) != 0){
+        for(j in 1:length(all_symbol)){ ## for k=1, you can check for j=6 and i=2
 
-        if(length(all_symbol) != 0){
-            for(j in 1:length(all_symbol)){ ## for k=1, you can check for j=6 and i=2
-
-                tempz1 <- tempz[tempz$symbol == all_symbol[j], ]
-
-                ##-- read the uniprot ensembl map file of the gene --------
-                temp_uniprot <- tf_ensemb_map$Uniprotswissprot[ 
-                which(tf_ensemb_map$Ensembl_gene_id == tfs$Ensembl_Gene_ID[
-                which(tfs$Gene_Symbol == all_symbol[j])])]
-
-                temp_map <- data.table::fread(paste0(output_dir,'/',temp_uniprot,'_',all_cancer[k],'.txt'))
-
-                nt_start <- temp_map$NT1 ## for each AA position
-                nt_end <- temp_map$NT3
-                ##------------------------------------------------------------------------
-                as_event <- vector(mode = "list", length = length(temp_map[[1]]))#rep('-', length(temp_map[[1]]))
-                temp_cancer <- rep('-', length(temp_map[[1]]))
-
-                for(jj in 1:length(tempz1[[1]])){ ## for each splicing event
-
-                    tempz2 <- tempz1[jj, ]
-                    skipped_exons <- strsplit(tempz2$exons,'[|]')[[1]]
-
-                    for(i in 1:length(skipped_exons)){ ## for each skipped exon, store the ES event ID
-                        temp_exon <- strsplit(skipped_exons[i],'[:]')[[1]]
-
-                        for(ii in 1:length(temp_exon)){
-
-                            tcga_temp <- tcga_map[tcga_map$Symbol == all_symbol[j], ]
-                            tcga_temp <- tcga_temp[tcga_temp$Exon == temp_exon[ii], ]
-                            temp_strand <- tcga_temp$Strand
-
-                            for(h in 1:length(nt_start)){ ## for each dbd start
-                                ## dbd start and end should be within tcga_temp start and end, in order to consider the dbd to be alternatively spliced
-
-                                if(temp_strand == '-'){
-                                    wh1 <- (nt_start[h] >= tcga_temp$Chr_Stop)
-                                    wh2 <- (nt_end[h] <= tcga_temp$Chr_Start)
-                                }else{
-                                    wh1 <- (nt_start[h] >= tcga_temp$Chr_Start)
-                                    wh2 <- (nt_end[h] <= tcga_temp$Chr_Stop)
-                                }
-                                
-                                if(wh1 & wh2){ 
-                                    ##-- store the event id and the cancer type ---
-                                    as_event[[h]] <- union(as_event[[h]],tempz2$as_id)
-                                    # print(paste0(j,':',i))
-                                }
-                            }
-
-                        }
-                        
-                    }
-                }
-
-                temp_map$ME <- unlist(lapply(as_event, function(x) paste(x, collapse=';')))
-                data.table::fwrite(temp_map,paste0(output_dir,'/',temp_uniprot,'_',all_cancer[k],'.txt'), sep='\t', row.names=FALSE, quote=FALSE)
-
-            }
-
-        }
-
-        for(j in 1:length(rest_symbols)){
+            tempz1 <- tempz[tempz$symbol == all_symbol[j], ]
 
             ##-- read the uniprot ensembl map file of the gene --------
             temp_uniprot <- tf_ensemb_map$Uniprotswissprot[ 
             which(tf_ensemb_map$Ensembl_gene_id == tfs$Ensembl_Gene_ID[
-            which(tfs$Gene_Symbol == rest_symbols[j])])]
+            which(tfs$Gene_Symbol == all_symbol[j])])]
 
             temp_map <- data.table::fread(paste0(output_dir,'/',temp_uniprot,'_',all_cancer[k],'.txt'))
-            as_event <- rep('', length(temp_map[[1]]))
-            temp_map$ME <- as_event
+
+            nt_start <- temp_map$NT1 ## for each AA position
+            nt_end <- temp_map$NT3
+            ##------------------------------------------------------------------------
+            as_event <- vector(mode = "list", length = length(temp_map[[1]]))#rep('-', length(temp_map[[1]]))
+            temp_cancer <- rep('-', length(temp_map[[1]]))
+
+            for(jj in 1:length(tempz1[[1]])){ ## for each splicing event
+
+                tempz2 <- tempz1[jj, ]
+                skipped_exons <- strsplit(tempz2$exons,'[|]')[[1]]
+
+                for(i in 1:length(skipped_exons)){ ## for each skipped exon, store the ES event ID
+                    temp_exon <- strsplit(skipped_exons[i],'[:]')[[1]]
+
+                    for(ii in 1:length(temp_exon)){
+
+                        tcga_temp <- tcga_map[tcga_map$Symbol == all_symbol[j], ]
+                        tcga_temp <- tcga_temp[tcga_temp$Exon == temp_exon[ii], ]
+                        temp_strand <- tcga_temp$Strand
+
+                        for(h in 1:length(nt_start)){ ## for each dbd start
+                            ## dbd start and end should be within tcga_temp start and end, in order to consider the dbd to be alternatively spliced
+
+                            if(temp_strand == '-'){
+                                wh1 <- (nt_start[h] >= tcga_temp$Chr_Stop)
+                                wh2 <- (nt_end[h] <= tcga_temp$Chr_Start)
+                            }else{
+                                wh1 <- (nt_start[h] >= tcga_temp$Chr_Start)
+                                wh2 <- (nt_end[h] <= tcga_temp$Chr_Stop)
+                            }
+                            
+                            if(wh1 & wh2){ 
+                                ##-- store the event id and the cancer type ---
+                                as_event[[h]] <- union(as_event[[h]],tempz2$as_id)
+                                # print(paste0(j,':',i))
+                            }
+                        }
+
+                    }
+                    
+                }
+            }
+
+            temp_map$ME <- unlist(lapply(as_event, function(x) paste(x, collapse=';')))
             data.table::fwrite(temp_map,paste0(output_dir,'/',temp_uniprot,'_',all_cancer[k],'.txt'), sep='\t', row.names=FALSE, quote=FALSE)
 
         }
+
+    }
+
+    for(j in 1:length(rest_symbols)){
+
+        ##-- read the uniprot ensembl map file of the gene --------
+        temp_uniprot <- tf_ensemb_map$Uniprotswissprot[ 
+        which(tf_ensemb_map$Ensembl_gene_id == tfs$Ensembl_Gene_ID[
+        which(tfs$Gene_Symbol == rest_symbols[j])])]
+
+        temp_map <- data.table::fread(paste0(output_dir,'/',temp_uniprot,'_',all_cancer[k],'.txt'))
+        as_event <- rep('', length(temp_map[[1]]))
+        temp_map$ME <- as_event
+        data.table::fwrite(temp_map,paste0(output_dir,'/',temp_uniprot,'_',all_cancer[k],'.txt'), sep='\t', row.names=FALSE, quote=FALSE)
+
     }
     
-
     cat('Cancer',k,'of',length(all_cancer),'done\n')
 }
 

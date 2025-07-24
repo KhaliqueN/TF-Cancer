@@ -27,7 +27,7 @@ ed_file <- as.data.frame(readxl::read_excel('../data/1-s2.0-S1097276521009576-mm
 ## From this study: Compendium of human transcription factor effector domains, Molecular Cell 2022
 
 tuniprot <- intersect(all_uniprot, ed_file$`Uniprot ID`)
-## Of the 1,460 TFs with DBD information, 536 have ED information ----
+## Of the 1,459 TFs with a matching Ensembl transcript, 536 have ED information ----
 
 for(k in 1:length(all_uniprot)){
 
