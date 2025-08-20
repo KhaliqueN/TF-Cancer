@@ -325,7 +325,8 @@ corr4 <- c()
 counter <- 0
 tgenet <- c()
 tsplice <- c()
-wb1 <- openxlsx::createWorkbook(paste0(save_dir,'/Events_perturbing_DBDs.xlsx'))
+
+wb1 <- openxlsx::createWorkbook(paste0(save_dir,'/PTSEs_perturbing_DBDs.xlsx'))
 
 for(k in 1:length(all_cancer)){
 
@@ -417,12 +418,14 @@ for(k in 1:length(all_cancer)){
     }
     
     ## save excel sheet ----
-    tdatat <- data.frame(GENE=tgene, AS=asidt, DBD=odbdt, MEAN_CANCER=corr1t, MEAN_NORMAL=corr2t, MEAN_DIFF=corr3t, FDR=corr4t)
+    # tdatat <- data.frame(GENE=tgene, AS_ID=asidt, DBD=odbdt, MEAN_CANCER=corr1t, MEAN_NORMAL=corr2t, MEAN_DIFF=corr3t, FDR=corr4t)
+    tdatat <- data.frame(AS_ID=asidt, DBD=odbdt)
+
     tdatat <- tdatat[tdatat$DBD != 0, ]
-    tdatat <- tdatat[order(abs(tdatat$MEAN_DIFF), decreasing=TRUE), ]
+    # tdatat <- tdatat[order(abs(tdatat$MEAN_DIFF), decreasing=TRUE), ]
     openxlsx::addWorksheet(wb1, sheetName = all_cancer[k])
     openxlsx::writeData(wb1, sheet = all_cancer[k], tdatat)
-    openxlsx::saveWorkbook(wb1, paste0(save_dir,'/Events_perturbing_DBDs.xlsx'), overwrite = T)
+    openxlsx::saveWorkbook(wb1, paste0(save_dir,'/PTSEs_perturbing_DBDs.xlsx'), overwrite = T)
 }
 
 tdata <- data.frame(CANCER=tcancer, SYMBOL=tgenet, AS=asid, SPLICE_TYPE=tsplice, DBD=odbd, MEAN_CANCER=corr1, MEAN_NORMAL=corr2, MEAN_DIFF=corr3, FDR=corr4)
@@ -854,6 +857,36 @@ p <- p + theme_grey(base_size = basesize) + labs(x = "Sample", y = "Gene") +
 ggsave(p,filename=paste0(save_dir,'/Perturbed_DBDs_tile.png'),width=5, height=4, dpi=500)
 
 
+##--- hypergeometruc test for each DBD type ---------
+
+bgsize <- sum(pdata$freq)
+temps <- pdataq[pdataq$freq > 0, ]#alldata[alldata$FLAG == 'PTSEs', ]
+sampleSize <- sum(temps$freq)
+all_dbds <- unique(temps$x)
+hyp1 <- c()
+for(k in 1:length(all_dbds)){
+
+    setB <- temps[temps$x == all_dbds[k], ]$freq
+    setA <- pdata[pdata$x == all_dbds[k], ]$freq
+    hyp1 <- c(hyp1, phyper(setB-1,setA,bgsize-setA, sampleSize))
+
+}
+
+hyp2 <- c()
+for(k in 1:length(all_dbds)){
+
+    setB <- temps[temps$x == all_dbds[k], ]$freq
+    setA <- pdata[pdata$x == all_dbds[k], ]$freq
+    hyp2 <- c(hyp2, phyper(setB-1,setA,bgsize-setA, sampleSize, lower.tail=FALSE))
+
+}
+hyp <- c(hyp1, hyp2)
+
+hypx <- p.adjust(hyp, 'fdr')
+##---------------------------------------------------
+
+
+
 ##---- alternative visualization of the fraction of perturbed DBD types ----
 event_dbd_unq <- unique(dbd_purt_dt[, c(2,5)])
 wh <- which(event_dbd_unq$DBD %like% ',')
@@ -882,32 +915,32 @@ pdatauniy1$FLAG <- rep('PTSEs',length(pdatauniy1[[1]]))
 pdatax1$FLAG <- rep('Background',length(pdatax1[[1]]))
 alldata <- rbind(pdatax1, pdatauniy1)
 
-##--- hypergeometruc test for each DBD type ---------
+# ##--- hypergeometruc test for each DBD type ---------
 
-bgsize <- sum(pdatax1$freq)
-temps <- alldata[alldata$FLAG == 'PTSEs', ]
-sampleSize <- sum(temps$freq)
-all_dbds <- unique(temps$x)
-hyp1 <- c()
-for(k in 1:length(all_dbds)){
+# bgsize <- sum(pdatax1$freq)
+# temps <- alldata[alldata$FLAG == 'PTSEs', ]
+# sampleSize <- sum(temps$freq)
+# all_dbds <- unique(temps$x)
+# hyp1 <- c()
+# for(k in 1:length(all_dbds)){
 
-    setB <- temps[temps$x == all_dbds[k], ]$freq
-    setA <- pdatax1[pdatax1$x == all_dbds[k], ]$freq
-    hyp1 <- c(hyp1, phyper(setB-1,setA,bgsize-setA, sampleSize))
+#     setB <- temps[temps$x == all_dbds[k], ]$freq
+#     setA <- pdatax1[pdatax1$x == all_dbds[k], ]$freq
+#     hyp1 <- c(hyp1, phyper(setB-1,setA,bgsize-setA, sampleSize))
 
-}
+# }
 
-hyp2 <- c()
-for(k in 1:length(all_dbds)){
+# hyp2 <- c()
+# for(k in 1:length(all_dbds)){
 
-    setB <- temps[temps$x == all_dbds[k], ]$freq
-    setA <- pdatax1[pdatax1$x == all_dbds[k], ]$freq
-    hyp2 <- c(hyp2, phyper(setB-1,setA,bgsize-setA, sampleSize, lower.tail=FALSE))
+#     setB <- temps[temps$x == all_dbds[k], ]$freq
+#     setA <- pdatax1[pdatax1$x == all_dbds[k], ]$freq
+#     hyp2 <- c(hyp2, phyper(setB-1,setA,bgsize-setA, sampleSize, lower.tail=FALSE))
 
-}
-hyp <- c(hyp1, hyp2)
-hypx <- p.adjust(hyp, 'fdr')
-##---------------------------------------------------
+# }
+# hyp <- c(hyp1, hyp2)
+# hypx <- p.adjust(hyp, 'fdr')
+# ##---------------------------------------------------
 
 cols <- c('#a6cee3','#1f78b4','#b2df8a','#33a02c','#fb9a99','#e31a1c','#fdbf6f','#ff7f00','#cab2d6','#6a3d9a','#ffff99','#b15928',
     '#8dd3c7','#ffffb3','#bebada','#fb8072','#80b1d3','#fdb462','#b3de69','#fccde5','#d9d9d9','#bc80bd','#ccebc5','#ffed6f','#000000',
