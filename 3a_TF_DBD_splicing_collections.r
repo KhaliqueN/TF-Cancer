@@ -22,6 +22,7 @@ dir.create(output_dir, recursive=TRUE)
 fdr <- 0.05
 tfs <- data.table::fread('../data/filtered_TFs_curated.txt', sep='\t')
 tf_ensemb_map <- as.data.frame(data.table::fread('../data/TF_ensembl_uniprot.txt', sep='\t'))
+# colnames(tf_ensemb_map) <- c('Ensembl_transcript_id','Uniprotswissprot','Ensembl_gene_id','Ensembl_protein_id')
 
 tcga_map <- data.table::fread(paste0(input_dir,'/TCGA_SpliceSeq_Gene_Structure.txt'))
 
@@ -50,7 +51,7 @@ for(k in 1:length(all_cancer)){
     tid <- unlist(lapply(strsplit(basename(all_filesx), '[.]'),'[[',1))
     eid <- tf_ensemb_map[which(tf_ensemb_map$Uniprotswissprot %in% tid),]$Ensembl_gene_id
     back_symbols <- tfs[which(tfs$Ensembl_Gene_ID %in% eid), ]$Gene_Symbol 
-    ## Out of 1639 curated TFs, 1460 are also present in the exon mapping file
+    ## Out of 1639 curated TFs, 1469 are also present in the exon mapping file
     ### So, the splice event information will be stored for these 1460 TFs
     ## 1314 of the 1460 TFs have DBD informaiton in the Uniprot
     

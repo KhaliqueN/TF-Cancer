@@ -9,6 +9,7 @@ library(ggplot2)
 library(GenomicDataCommons)
 library(pheatmap)
 library(cowplot)
+library(ggrepel)
 
 save_dir <- '../results_new/Dependency'
 if(dir.exists(save_dir)){

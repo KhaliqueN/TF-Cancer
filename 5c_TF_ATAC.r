@@ -73,7 +73,7 @@ for(k in 1:length(all_cancer)){
     temp_psi <- data.table::fread(all_files_raw[k], sep='\t', fill=TRUE)
     temp_psi <- as.data.frame(temp_psi)
     wh <- which(colnames(temp_psi) %in% all_samples)
-    print(paste0('# of samples: ',length(wh)))
+    # print(paste0('# of samples: ',length(wh)))
 
     if(length(wh) != 0){
 
@@ -116,7 +116,7 @@ for(k in 1:length(all_cancer)){
                     temp_cor <- cor.test(tempqs, temps, method='spearman', use="complete.obs")
                     t_rnd_cors <- c()
                     for(ii in 1:rnd_expr){ ##--- randomized experiment
-                        temp_cor_rnd <- cor.test(x=tempqs, y=sample(temps), method = 'spearman', use="complete.obs")
+                        temp_cor_rnd <- cor.test(x=sample(tempqs), y=sample(temps), method = 'spearman', use="complete.obs")
                         t_rnd_cors <- c(t_rnd_cors, as.numeric(temp_cor_rnd$estimate))
                     }
 
@@ -294,7 +294,7 @@ for(k in 1:length(all_cancer)){
                     temp_cor <- cor.test(tempqs, temps, method='spearman', use="complete.obs")
                     t_rnd_cors <- c()
                     for(ii in 1:rnd_expr){ ##--- randomized experiment
-                        temp_cor_rnd <- cor.test(x=tempqs, y=sample(temps), method = 'spearman', use="complete.obs")
+                        temp_cor_rnd <- cor.test(x=sample(tempqs), y=sample(temps), method = 'spearman', use="complete.obs")
                         t_rnd_cors <- c(t_rnd_cors, as.numeric(temp_cor_rnd$estimate))
                     }
 
@@ -331,17 +331,23 @@ TF_depthx <- TF_depth_all#[order(TF_depth_all$ID), ]
 TF_flankx <- TF_flank_all#[order(TF_flank_all$ID), ]
 
 TF_FP_all <- rbind(TF_depthx, TF_flankx)
+TF_FP_all$FDR <- p.adjust(TF_FP_all$RND_PVAL, 'fdr')
+
 data.table::fwrite(TF_FP_all, paste0(save_dir,'/Footprinting_correlation.txt'),sep='\t',row.names=FALSE, quote=FALSE)
 
 TF_FP_allx <- TF_FP_all[,-c(7,10)]
+
 colnames(TF_FP_allx) <- c('CANCER','TF','AS_ID','AS_TYPE','DNA_MOTIF','SPEARMAN_COR','P_VALUE','FOOTPRINT','FDR')
 data.table::fwrite(TF_FP_allx, paste0(save_dir,'/Footprinting_correlation.csv'),sep='\t',row.names=FALSE, quote=FALSE)
 
 TF_FP_all <- data.table::fread(paste0(save_dir,'/Footprinting_correlation.txt'),sep='\t')
 ##---------------------------------------
 
-TF_FP_all$FDR <- p.adjust(TF_FP_all$RND_PVAL, 'fdr')
+# TF_FP_all$FDR <- p.adjust(TF_FP_all$RND_PVAL, 'fdr')
+# TF_FP_all$AFDR <- p.adjust(TF_FP_all$PVAL, 'fdr')
+
 # TF_FP_all_sig <- TF_FP_all[TF_FP_all$FDR < fdr, ]
+# TF_FP_all_sig <- TF_FP_all_sig[TF_FP_all_sig$AFDR < fdr, ]
 
 
 ##--- for each ASID-cancer pair, select one motif with larger correlation ----
@@ -446,17 +452,73 @@ tempd3 <- tempd3 %>% arrange(desc(SIG))
 
 basesize <- 10
 ppx <- ggplot(data = tempd3, aes(x=flank_CORR, y=CORR, color=SIG, label=PL)) + 
+# ppx <- ggplot(data = tempd3, aes(x=flank_CORR, y=CORR, color=SIG)) + 
 geom_point(alpha=0.8, size=1)+
-scale_x_continuous(limits=c(-1.4,1.4))+
-scale_y_continuous(limits=c(-1.4,1.4))+
+scale_x_continuous(limits=c(-1,1), breaks=c(-1,-0.5,0,0.5,1))+
+scale_y_continuous(limits=c(-1,1), breaks=c(-1,-0.5,0,0.5,1))+
 scale_color_manual(values=c('#1b9e77', '#d95f02', '#7570b3', '#d9d9d9'))+
 xlab("Correlation with flanking accessibility")+ylab("Correlation with footprinting depth")+
 geom_text_repel(family = "Poppins",
     max.overlaps=Inf,
-                      size = 3,
+                      size = 2,
                       color='black',
+                      seed=NA,
                       arrow = arrow(length = unit(0.010, "npc")),
                       min.segment.length = 0) +
+# geom_label_repel(data = tempd3[tempd3$SIG == 'Footprinting depth' & tempd3$CORR > 0, ], 
+#                     aes(label = PL),
+#                     ylim = c(1, NA), # <--- here
+#                     family = "Poppins",
+#                     max.overlaps=Inf,
+#                     size = 2,
+#                     color='black',
+#                     arrow = arrow(length = unit(0.010, "npc")),
+#                     min.segment.length = 0,
+#                     seed = 1) +
+# geom_label_repel(data = tempd3[tempd3$SIG == 'Footprinting depth' & tempd3$CORR < 0, ], 
+#                     aes(label = PL),
+#                     ylim = c(NA, -1), # <--- here
+#                     family = "Poppins",
+#                     max.overlaps=Inf,
+#                     size = 2,
+#                     color='black',
+#                     arrow = arrow(length = unit(0.010, "npc")),
+#                     min.segment.length = 0,
+#                     seed = 1) +
+# geom_label_repel(data = tempd3[tempd3$SIG == 'Flanking accessibility' & tempd3$flank_CORR < 0, ], 
+#                     aes(label = PL),
+#                     xlim = c(NA, -1), # <--- here
+#                     family = "Poppins",
+#                     max.overlaps=Inf,
+#                     size = 2,
+#                     color='black',
+#                     arrow = arrow(length = unit(0.010, "npc")),
+#                     min.segment.length = 0,
+#                     seed = 1) +
+# geom_label_repel(data = tempd3[tempd3$SIG == 'Flanking accessibility' & tempd3$flank_CORR > 0, ], 
+#                     aes(label = PL),
+#                     xlim = c(1, NA), # <--- here
+#                     family = "Poppins",
+#                     max.overlaps=Inf,
+#                     size = 2,
+#                     color='black',
+#                     arrow = arrow(length = unit(0.010, "npc")),
+#                     min.segment.length = 0,
+#                     seed = 1) +
+# geom_label_repel(data = tempd3[tempd3$SIG == 'Both' & tempd3$flank_CORR > 0, ], 
+#                     aes(label = PL),
+#                     xlim = c(1,NA), # <--- here
+#                     family = "Poppins",
+#                     max.overlaps=Inf,
+#                     size = 2,
+#                     color='black',
+#                     arrow = arrow(length = unit(0.010, "npc")),
+#                     min.segment.length = 0,
+#                     seed = 1) +
+#   # geom_label_repel(data = tab7[ tab7$FDR < 0.05 & tab7$logFC > 0, ], 
+#   #                  aes(label = genelabels),
+#   #                  xlim = c(1, NA),  # <--- here
+#   #                  seed = 1) +
 theme_bw()+theme(axis.text.x = element_text(size = 1*basesize, angle = 60, vjust=1, hjust=1, colour = "black"),
     axis.text.y = element_text(size = 1*basesize, angle = 0, colour = "black"),
     panel.grid.major = element_blank(),panel.grid.minor = element_blank(),

@@ -61,7 +61,7 @@ tgene <- c()
 tempfun <- function(tempo_data, tempxz, xxp){
 
     # print(as.numeric(xxp))
-    temp1_c <- plyr::count(tempo_data[,c(23,as.numeric(xxp))])
+    temp1_c <- plyr::count(tempo_data[,c(21,as.numeric(xxp))])
     colnames(temp1_c) <- c('ED','AS','freq')
 
     xdbd <- c()
@@ -124,7 +124,7 @@ for(k in 1:length(all_cancer)){
                 temp1 <- temp1[wht,]
                 all_filesx1 <- c(all_filesx1, all_files[j])
                 events1 <- union(events1, unlist(strsplit(as.character(temp1$ES),';')) ) ##--
-                tempxg <- tempfun(as.data.frame(temp1), as.data.frame(temp), 17)
+                tempxg <- tempfun(as.data.frame(temp1), as.data.frame(temp), 15)
                 tdbd <- c(tdbd, as.character(tempxg$ED))
                 tevents <- c(tevents, as.character(tempxg$AS))
                 taa <- c(taa, as.character(tempxg$frac))
@@ -139,7 +139,7 @@ for(k in 1:length(all_cancer)){
                 temp2 <- temp2[wht,]
                 all_filesx2 <- c(all_filesx2, all_files[j])
                 events2 <- union(events2, unlist(strsplit(as.character(temp2$AP),';')))
-                tempxg <- tempfun(as.data.frame(temp2), as.data.frame(temp), 18)
+                tempxg <- tempfun(as.data.frame(temp2), as.data.frame(temp), 16)
                 tdbd <- c(tdbd, as.character(tempxg$ED))
                 tevents <- c(tevents, as.character(tempxg$AS))
                 taa <- c(taa, as.character(tempxg$frac))
@@ -154,7 +154,7 @@ for(k in 1:length(all_cancer)){
                 temp3 <- temp3[wht,]
                 all_filesx3 <- c(all_filesx3, all_files[j])
                 events3 <- union(events3, unlist(strsplit(as.character(temp3$AT),';')))
-                tempxg <- tempfun(as.data.frame(temp3), as.data.frame(temp), 19)
+                tempxg <- tempfun(as.data.frame(temp3), as.data.frame(temp), 17)
                 tdbd <- c(tdbd, as.character(tempxg$ED))
                 tevents <- c(tevents, as.character(tempxg$AS))
                 taa <- c(taa, as.character(tempxg$frac))
@@ -169,7 +169,7 @@ for(k in 1:length(all_cancer)){
                 temp4 <- temp4[wht,]
                 all_filesx4 <- c(all_filesx4, all_files[j])
                 events4 <- union(events4, unlist(strsplit(as.character(temp4$AD),';')))
-                tempxg <- tempfun(as.data.frame(temp4), as.data.frame(temp), 20)
+                tempxg <- tempfun(as.data.frame(temp4), as.data.frame(temp), 18)
                 tdbd <- c(tdbd, as.character(tempxg$ED))
                 tevents <- c(tevents, as.character(tempxg$AS))
                 taa <- c(taa, as.character(tempxg$frac))
@@ -184,7 +184,7 @@ for(k in 1:length(all_cancer)){
                 temp5 <- temp5[wht,]
                 all_filesx5 <- c(all_filesx5, all_files[j])
                 events5 <- union(events5, unlist(strsplit(as.character(temp5$AA),';')))
-                tempxg <- tempfun(as.data.frame(temp5), as.data.frame(temp), 21)
+                tempxg <- tempfun(as.data.frame(temp5), as.data.frame(temp), 19)
                 tdbd <- c(tdbd, as.character(tempxg$ED))
                 tevents <- c(tevents, as.character(tempxg$AS))
                 taa <- c(taa, as.character(tempxg$frac))
@@ -199,7 +199,7 @@ for(k in 1:length(all_cancer)){
                 temp6 <- temp6[wht,]
                 all_filesx6 <- c(all_filesx6, all_files[j])
                 events6 <- union(events6, unlist(strsplit(as.character(temp6$ME),';')))
-                tempxg <- tempfun(as.data.frame(temp6), as.data.frame(temp), 22)
+                tempxg <- tempfun(as.data.frame(temp6), as.data.frame(temp), 20)
                 tdbd <- c(tdbd, as.character(tempxg$ED))
                 tevents <- c(tevents, as.character(tempxg$AS))
                 taa <- c(taa, as.character(tempxg$frac))
@@ -408,6 +408,7 @@ for(k in 1:length(all_cancer)){
 
 tdata <- data.frame(CANCER=tcancer, SYMBOL=tgenet, AS=asid, SPLICE_TYPE=tsplice, ED=odbd, MEAN_CANCER=corr1, MEAN_NORMAL=corr2, MEAN_DIFF=corr3, FDR=corr4)
 data.table::fwrite(tdata, paste0('../data/Events_perturbing_ED.txt'), row.names=FALSE, quote=FALSE, sep='\t')
+## tempd <- data.table::fread('../data/Events_perturbing_ED.txt')
 
 ##----------------------------------------------------------------
 dbd_purt_dt <- tdata
@@ -468,7 +469,7 @@ geom_text(aes(label=value), position=position_dodge(width=0.9),hjust=0, vjust=0.
 theme(axis.text.x = element_text(size = basesize, angle = 60, hjust = 0.5,vjust=0.5, colour = "black"),
 axis.text.y = element_text(size = basesize, angle = 0, hjust = 0.5,vjust=0.5, colour = "black"), 
 panel.grid.major = element_blank(),panel.grid.minor = element_blank(),
-strip.text = element_text(size = basesize), axis.title=element_text(basesize*1.25), legend.position=c(0.85,0.82))+
+strip.text = element_text(size = basesize), axis.title=element_text(size=basesize*1.25), legend.position=c(0.85,0.82))+
 guides(fill=guide_legend(title="Entity",ncol=1))
 ggsave(p,filename=paste0(save_dir,"/Sig_events_TFs.png"),width=3.5, height=3, dpi=400)
 
@@ -534,7 +535,8 @@ pdata$PL <- ""
 pdata$PL[whl] <- tolabel
 
 pdata$AA <- as.numeric(pdata$AA)
-p <- ggplot(pdata, aes(AA, MEAN_DIFF, color=CANCER, label=PL)) + 
+# p <- ggplot(pdata, aes(AA, MEAN_DIFF, color=CANCER, label=PL)) + 
+p <- ggplot(pdata, aes(AA, MEAN_DIFF, color=CANCER)) + 
 geom_point()+
 theme(legend.text=element_text(size=12))
 basesize <- 10
@@ -543,20 +545,21 @@ scale_x_continuous(name="% of ED residues", limits=c(0,110), breaks = seq(0, 100
 scale_y_continuous(name="Mean \u0394PSI", limits=c(-0.8, 0.8)) +
 scale_color_manual(values=c('#a6cee3','#1f78b4','#b2df8a','#fb9a99','#ffff99',
     '#fdbf6f','#ff7f00','#cab2d6','#6a3d9a','#e31a1c','#b15928','black','#9e0142','#053061'))+
-geom_text_repel(family = "Poppins",
-    max.overlaps=Inf,
-                      size = 2,
-                      color='black',
-                      arrow = arrow(length = unit(0.010, "npc")),
-                      min.segment.length = 0) +
+# geom_text_repel(family = "Poppins",
+#     max.overlaps=Inf,
+#                       size = 2,
+#                       color='black',
+#                       arrow = arrow(length = unit(0.010, "npc")),
+#                       min.segment.length = 0) +
 theme_bw()+theme(axis.text.x = element_text(size = 1*basesize, angle = 60, vjust=1, hjust=1, colour = "black"),
     axis.text.y = element_text(size = 1*basesize, angle = 0, colour = "black"),
     panel.grid.major = element_blank(),panel.grid.minor = element_blank(),
-    axis.line = element_line(colour = "black"), legend.position="bottom",axis.title=element_text(size=basesize),
+    axis.line = element_line(colour = "black"),axis.title=element_text(size=basesize),
     legend.text=element_text(size=basesize), legend.title=element_text(size=basesize),
     panel.border = element_blank())+
-guides(color='none')
-ggsave(p,filename=paste0(save_dir,"/AA_vs_meanDiff.png"),width=4, height=3, dpi=500)
+# guides(color='none')
+guides(color=guide_legend(title="Cancer type", ncol=2))
+ggsave(p,filename=paste0(save_dir,"/AA_vs_meanDiff.png"),width=5, height=3, dpi=500)
 
 
 ##--- total number of events -----
@@ -654,9 +657,9 @@ qdata <- data.frame(ED=idbd, RPOS=rel_pos, ID=ids)
 ## bin the relative positions
 qdata$bval <- cut(qdata$RPOS, breaks = seq(0,1,0.05), include.lowest=TRUE)
 
-wh <- which(qdata$ED %in% pdata1$x)
-whe <- setdiff(seq(1,length(qdata[[1]])), wh)
-qdata$DBD[whe] <- paste0('Others (', length(pdata2[[1]]), ')')
+# wh <- which(qdata$ED %in% pdata$x)
+# whe <- setdiff(seq(1,length(qdata[[1]])), wh)
+# qdata$DBD[whe] <- paste0('Others (', length(pdata2[[1]]), ')')
 
 udbd <- unique(qdata$bval)
 qqdata <- data.frame(matrix(nrow=0, ncol=4))
@@ -967,6 +970,29 @@ p <- ggplot(pdata, aes(x = "" , y = count, fill = fct_inorder(Type))) +
 ggsave(p,filename=paste0(save_dir,"/Pi_chart.png"),width=4, height=4, dpi=400)
 
 #########--------------------------------------------------------------------------------
+
+
+# ##--- overlap of the non DBD or ED perturbed TF with other TFs of PTSEs ----
+# input_dir <- '../data/PSI_data'
+# fdr <- 0.05
+# all_files <- gtools::mixedsort(list.files(input_dir, pattern='*filtered_PSI_paired.txt', full.names=TRUE))
+# not_included <- list()
+# for(k in 1:length(all_cancer)){
+
+#     temp <- data.table::fread(all_files[k], sep='\t')
+#     whx <- which(toupper(temp$symbol) %in% tfs$Gene_Symbol) ## number of AS events concerning TFs
+#     temp1 <- temp[whx,]
+
+#     wha <- which(temp$FDR < fdr)
+#     whb <- which(abs(temp$MEAN_NORMAL-temp$MEAN_CANCER) > fdr)
+#     wh <- intersect(wha, whb)
+#     tempx <- temp[wh, ]
+#     whx <- which(toupper(tempx$symbol) %in% tfs$Gene_Symbol) ## number of AS events concerning TFs
+#     tempy <- tempx[whx,]
+#     tempz <- tempy[tempy$symbol %in% setdiff(tempy$symbol, temp_oth),]
+#     not_included[[k]] <- tempz[order(-abs(tempz$MEAN_DIFF)), ]
+
+# }
 
 
 

@@ -54,6 +54,7 @@ system(paste0("gunzip ../data/",xx))
 ## Ensembl map data ------------------------------------------
 
 ##---- Download all ensembl data -------------------------
+## Downloaded on 16th Sept. 2025
 # wget -O result.txt 'http://www.ensembl.org/biomart/martservice?query=<?xml version="1.0" encoding="UTF-8"?> <!DOCTYPE Query><Query  virtualSchemaName = "default" formatter = "TSV" header = "0" uniqueRows = "0" count = "" datasetConfigVersion = "0.6" ><Dataset name = "hsapiens_gene_ensembl" interface = "default" ><Attribute name = "ensembl_gene_id" /><Attribute name = "ensembl_gene_id_version" /><Attribute name = "ensembl_transcript_id" /> <Attribute name = "ensembl_transcript_id_version" /><Attribute name = "external_gene_name" /><Attribute name = "ensembl_exon_id" /><Attribute name = "external_synonym" /><Attribute name = "chromosome_name" /><Attribute name = "strand" /><Attribute name = "start_position" /><Attribute name = "end_position" /><Attribute name = "hgnc_symbol" /><Attribute name = "uniprotswissprot" /><Attribute name = "transcript_biotype" /></Dataset></Query>'
 temp_file <- data.table::fread('result.txt')
 colnames(temp_file) <- c('Ensembl_gene_id','Ensembl_gene_id_version','Ensembl_transcript_id','Ensembl_transcript_id_version',

@@ -10,6 +10,7 @@ rm(list=ls())
 
 library(data.table)
 library(ggplot2)
+library(TCGAbiolinks)
 library(GenomicDataCommons)
 library(pheatmap)
 library(dplyr)
@@ -20,6 +21,15 @@ if(dir.exists(save_dir)){
 	unlink(save_dir, recursive=TRUE)
 }
 dir.create(save_dir, recursive=TRUE)
+
+##-- TCGA BRCA subtypes info -------------
+brca_subtype <-  as.data.frame(TCGAbiolinks::TCGAquery_subtype(tumor = "brca"))
+brca_subtype <- brca_subtype[,c(1,12)]
+
+# prad_subtype <-  as.data.frame(TCGAbiolinks::TCGAquery_subtype(tumor = "coad"))
+# prad_subtype <- prad_subtype[,c(1,27)]
+
+###---------------------------------------
 
 ## TFs -------------------
 tfs <- data.table::fread('../data/filtered_TFs_curated.txt', sep='\t')
@@ -111,8 +121,7 @@ colnames(pdatae) <- c('Cancer','PTSE','TF')
 pdata <- reshape2::melt(pdatae)
 pdata[pdata == 0] <- NA
 p <- ggplot(pdata, aes(Cancer, value, fill=variable)) + 
-geom_bar(stat="identity",position="dodge")+
-theme(legend.text=element_text(size=12))
+geom_bar(stat="identity",position="dodge")
 basesize <- 8
 p <- p + theme_bw(base_size = basesize) +
 scale_x_discrete(name="Cancer type") + 
@@ -123,7 +132,7 @@ geom_text(aes(label=value), position=position_dodge(width=0.9),hjust=0, vjust=0.
 theme(axis.text.x = element_text(size = basesize, angle = 60, hjust = 0.5,vjust=0.5, colour = "black"),
 axis.text.y = element_text(size = basesize, angle = 0, hjust = 0.5,vjust=0.5, colour = "black"), 
 panel.grid.major = element_blank(),panel.grid.minor = element_blank(),
-strip.text = element_text(size = basesize), axis.title=element_text(basesize*1.25), legend.position=c(0.85,0.82))+
+strip.text = element_text(size = basesize), axis.title=element_text(size=basesize), legend.position=c(0.85,0.82))+
 guides(fill=guide_legend(title="Entity",ncol=1))
 ggsave(p,filename=paste0(save_dir,"/Sig_events_TFs.png"),width=3.5, height=3, dpi=400)
 
@@ -215,6 +224,132 @@ legend.text=element_text(size=basesize*1.3), legend.title=element_text(size=base
 guides(color=guide_legend(title="Cancer\ntype", ncol=4, override.aes = list(size = 3)))
 ggsave(p,filename=paste0(save_dir,"/tSNE.png"),width=5, height=6, dpi=500)
 
+##---- BRCA subtype --------------------------------------------
+samb <- intersect(rownames(tounmap), gsub('-','_',brca_subtype[[1]]))
+whs <- which(rownames(tounmap) %in% samb)
+tounmap_brca <- rownames(tounmap)[whs]
+umap_reduction_brca <- umap_reduction_df_c[whs, ]
+temp_sub <- rep(0,length(samb))
+for(k in 1:length(samb)){
+    wh1 <- which(tounmap_brca == samb[k])
+    temp_sub[wh1] <- brca_subtype[[2]][which(gsub('-','_',brca_subtype[[1]]) == samb[k])]
+}
+
+umap_reduction_brca$BRCA <- temp_sub
+p <- ggplot(umap_reduction_brca, aes(V1, V2, color=BRCA)) + 
+geom_point(alpha=0.75, size=1)+
+theme(legend.text=element_text(size=8))
+basesize <- 10
+p <- p + theme_bw(base_size = basesize) +
+scale_x_continuous(name="tSNE dimension 1") + 
+scale_y_continuous(name="tSNE dimension 2") +
+scale_color_manual(values=c('#e41a1c','#377eb8','#000000','#984ea3','#ff7f00'))+
+# geom_text(aes(label=count), position=position_dodge(width=0.9),hjust=0, vjust=0, angle=75, size=3)+
+# geom_text(aes(label=value), position=position_stack(vjust=0.5), size=3)+
+theme(axis.text.x = element_text(size = basesize*1.6, angle = 60, hjust = 0.5,vjust=0.5, colour = "black"),
+axis.text.y = element_text(size = basesize*1.6, angle = 0, hjust = 0.5,vjust=0.5, colour = "black"), 
+panel.grid.major = element_blank(),panel.grid.minor = element_blank(),
+strip.text = element_text(size = basesize*1.6), axis.title=element_text(size=basesize*1.6), legend.position="bottom", 
+legend.text=element_text(size=basesize*1.3), legend.title=element_text(size=basesize*1.3))+
+guides(color=guide_legend(title="BRCA\nsubtype", ncol=4, override.aes = list(size = 3)))
+ggsave(p,filename=paste0(save_dir,"/BRCA_tSNE.png"),width=5, height=6, dpi=500)
+
+# ###-------------------------------------------------------------
+# ##--- BRCA ----
+# casid <- events_tf[[2]]
+
+# umap_data <- data.frame(matrix(ncol=0, nrow=0))
+# csamp <- c()
+# for(k in 2:2){
+#     temp <- data.table::fread(all_files_raw[k], sep='\t', fill=TRUE)
+#     tempx <- temp[temp$as_id %in% casid, ]
+#     tempx <- as.data.frame(tempx[order(tempx$as_id), ])
+#     tempy <- tempx[,which(colnames(tempx) %like% 'TCGA')]
+#     tempy <- sapply(tempy, as.numeric)
+#     tempy <- as.data.frame(t(tempy))
+#     wha <- which(rownames(tempy) %like% 'Norm')
+#     nflag <- rep('Cancer',length(tempy[[1]]))
+#     nflag[wha] <- 'Normal'
+#     cflag <- rep(all_cancer[k], length(tempy[[1]]))
+#     tempy$Sample <- nflag
+#     tempy$Cancer <- cflag
+#     tempyy <- tempy[tempy$Sample == 'Cancer', ]
+#     umap_data <- rbind(umap_data, tempyy)
+#     csamp <- c(csamp, length(tempyy[[1]]))
+# }
+
+# umap_data_na <- umap_data[is.na(umap_data)] <- 0
+# tounmap <- umap_data[, grep("V", colnames(umap_data))]
+
+# ##--- TSNE ---
+# umap_reduction <- Rtsne::Rtsne(tounmap, check_duplicates = FALSE)
+# umap_reduction_df <- data.frame(V1=umap_reduction$Y[,1], V2=umap_reduction$Y[,2])
+# umap_reduction_df$Sample <- umap_data$Sample
+# umap_reduction_df$Cancer <- umap_data$Cancer
+# umap_reduction_df_c <- umap_reduction_df[umap_reduction_df$Sample == 'Cancer',]
+
+# samb <- intersect(rownames(tounmap), gsub('-','_',brca_subtype[[1]]))
+# whs <- which(rownames(tounmap) %in% samb)
+# tounmap_brca <- rownames(tounmap)[whs]
+# umap_reduction_brca <- umap_reduction_df_c[whs, ]
+# temp_sub <- rep(0,length(samb))
+# for(k in 1:length(samb)){
+#     wh1 <- which(tounmap_brca == samb[k])
+#     temp_sub[wh1] <- brca_subtype[[2]][which(gsub('-','_',brca_subtype[[1]]) == samb[k])]
+# }
+
+# umap_reduction_brca$BRCA <- temp_sub
+# p <- ggplot(umap_reduction_brca, aes(V1, V2, color=BRCA)) + 
+# geom_point(alpha=0.75, size=1)+
+# theme(legend.text=element_text(size=8))
+# basesize <- 10
+# p <- p + theme_bw(base_size = basesize) +
+# scale_x_continuous(name="tSNE dimension 1") + 
+# scale_y_continuous(name="tSNE dimension 2") +
+# scale_color_manual(values=c('#e41a1c','#377eb8','#000000','#984ea3','#ff7f00'))+
+# # geom_text(aes(label=count), position=position_dodge(width=0.9),hjust=0, vjust=0, angle=75, size=3)+
+# # geom_text(aes(label=value), position=position_stack(vjust=0.5), size=3)+
+# theme(axis.text.x = element_text(size = basesize*1.6, angle = 60, hjust = 0.5,vjust=0.5, colour = "black"),
+# axis.text.y = element_text(size = basesize*1.6, angle = 0, hjust = 0.5,vjust=0.5, colour = "black"), 
+# panel.grid.major = element_blank(),panel.grid.minor = element_blank(),
+# strip.text = element_text(size = basesize*1.6), axis.title=element_text(size=basesize*1.6), legend.position="bottom", 
+# legend.text=element_text(size=basesize*1.3), legend.title=element_text(size=basesize*1.3))+
+# guides(color=guide_legend(title="BRCA\nsubtype", ncol=4, override.aes = list(size = 3)))
+# ggsave(p,filename=paste0(save_dir,"/BRCA_tSNE_unq.png"),width=5, height=6, dpi=500)
+
+##---------------
+# ##---- LUSC subtype --------------------------------------------
+# samb <- intersect(rownames(tounmap), gsub('-','_',prad_subtype[[1]]))
+# whs <- which(rownames(tounmap) %in% samb)
+# tounmap_prad <- rownames(tounmap)[whs]
+# umap_reduction_prad <- umap_reduction_df_c[whs, ]
+# temp_sub <- rep(0,length(samb))
+# for(k in 1:length(samb)){
+#     wh1 <- which(tounmap_prad == samb[k])
+#     temp_sub[wh1] <- as.character(prad_subtype[[2]][which(gsub('-','_',prad_subtype[[1]]) == samb[k])])
+# }
+
+# umap_reduction_prad$PRAD <- temp_sub
+# p <- ggplot(umap_reduction_prad, aes(V1, V2, color=PRAD)) + 
+# geom_point(alpha=0.75, size=1)+
+# theme(legend.text=element_text(size=8))
+# basesize <- 10
+# p <- p + theme_bw(base_size = basesize) +
+# scale_x_continuous(name="tSNE dimension 1") + 
+# scale_y_continuous(name="tSNE dimension 2") +
+# scale_color_manual(values=c('#e41a1c','#377eb8','#4daf4a','#984ea3','#ff7f00','#ffff33','#a65628','#f781bf'))+
+# # geom_text(aes(label=count), position=position_dodge(width=0.9),hjust=0, vjust=0, angle=75, size=3)+
+# # geom_text(aes(label=value), position=position_stack(vjust=0.5), size=3)+
+# theme(axis.text.x = element_text(size = basesize*1.6, angle = 60, hjust = 0.5,vjust=0.5, colour = "black"),
+# axis.text.y = element_text(size = basesize*1.6, angle = 0, hjust = 0.5,vjust=0.5, colour = "black"), 
+# panel.grid.major = element_blank(),panel.grid.minor = element_blank(),
+# strip.text = element_text(size = basesize*1.6), axis.title=element_text(size=basesize*1.6), legend.position="bottom", 
+# legend.text=element_text(size=basesize*1.3), legend.title=element_text(size=basesize*1.3))+
+# guides(color=guide_legend(title="COAD\nsubtype", ncol=4, override.aes = list(size = 3)))
+# ggsave(p,filename=paste0(save_dir,"/COAD_tSNE.png"),width=5, height=6, dpi=500)
+
+# # ###-------------------------------------------------------------
+
 
 ###------ Distribution of perturbation values ----------------------------------------------------
 ##------------------------------------------------
@@ -277,7 +412,7 @@ scale_x_continuous(name="# of patients in a cancer type", limits = c(0, 1), brea
 theme(axis.text.x = element_text(size = basesize, angle = 60, hjust = 0.5,vjust=0.5, colour = "black"),
 axis.text.y = element_text(size = basesize , angle = 0, hjust = 0.5,vjust=0.5, colour = "black"), 
 panel.grid.major = element_blank(),panel.grid.minor = element_blank(),
-strip.text = element_text(size = basesize ), axis.title=element_text(basesize))+
+strip.text = element_text(size = basesize ), axis.title=element_text(size=basesize))+
 scale_color_manual(values=c('#a6cee3','#1f78b4','#b2df8a','#fb9a99','#ffff99',
     '#fdbf6f','#ff7f00','#cab2d6','#6a3d9a','#e31a1c','#b15928','black','#9e0142','#053061'))+
 guides(color=guide_legend(title="Cancer type",ncol=2, override.aes = list(size=2)))
@@ -310,7 +445,7 @@ scale_color_manual(values=c('#a6cee3','#1f78b4','#b2df8a','#fb9a99','#ffff99',
 theme(axis.text.x = element_text(size = basesize, angle = 60, hjust = 0.5,vjust=0.5, colour = "black"),
 axis.text.y = element_text(size = basesize, angle = 0, hjust = 0.5,vjust=0.5, colour = "black"), 
 panel.grid.major = element_blank(),panel.grid.minor = element_blank(),
-strip.text = element_text(size = basesize), axis.title=element_text(basesize*1.25))+
+strip.text = element_text(size = basesize), axis.title=element_text(size=basesize*1.25))+
 guides(color='none')
 ggsave(p,filename=paste0(save_dir,"/Sig_events_TFs_dist.png"),width=3.5, height=2.5, dpi=400)
 
@@ -387,7 +522,7 @@ geom_text(aes(label=count), position=position_dodge(width=0.9),hjust=0, vjust=0,
 theme(axis.text.x = element_text(size = basesize, angle = 60, hjust = 0.5,vjust=0.5, colour = "black"),
 axis.text.y = element_text(size = basesize, angle = 0, hjust = 0.5,vjust=0.5, colour = "black"),
 panel.grid.major = element_blank(),panel.grid.minor = element_blank(), 
-strip.text = element_text(size = basesize), axis.title=element_text(basesize))+
+strip.text = element_text(size = basesize), axis.title=element_text(size=basesize))+
 guides(fill=guide_legend(title="Percent Spliced In",ncol=1))#guides(fill='none')
 ggsave(p,filename=paste0(save_dir,"/Events_perturbing_overlap.png"),width=3.5, height=3, dpi=300)
 
@@ -445,6 +580,79 @@ p <- pheatmap(pdx,fontsize=3, cluster_rows=FALSE, cluster_cols=FALSE,cellheight=
 ggsave(p,filename=paste0(save_dir, "/Pancancer_events.png"),width=5, height=7, dpi=600)
 
 saveRDS(num_events_combs, file = "../data/overlapping_events.rds")
+
+
+##---- KEGG pathways analysis of the affected genes -------------------------------------------------
+##---- Using TFLink ----
+tf_ensemb_map <- as.data.frame(data.table::fread('../data/TF_ensembl_uniprot.txt', sep='\t'))
+# colnames(tf_ensemb_map) <- c('Ensembl_transcript_id','Uniprotswissprot','Ensembl_gene_id','Ensembl_protein_id')
+
+# diff_expr_files <- gtools::mixedsort(list.files('../data/Diff_expr', full.names=TRUE))
+# ensembl_gene_map <- data.table::fread('../data/ensembl_name_map.txt')
+##---- grn without direction downloaded from here: https://tflink.net/download/
+grn <- as.data.frame(data.table::fread('../data/TFLink_Homo_sapiens_interactions_SS_simpleFormat_v1.0.tsv'))
+grn_filt <- grn[grn$`Name.TF` %in% tfs$Gene_Symbol,]
+##---- 14,439 edges ---------
+
+# #####----- Using Dorothea for GRN --------------
+# all_map <- data.table::fread('../data/ensembl_name_map.txt')
+# all_mapx <- unique(all_map[,c(1,12,13)])
+# conf_grn <- as.data.frame(dorothea_hs[dorothea_hs$confidence %in% c('A','B','C','D'), ])
+# ##-------- 13,223 edges -------------------
+
+all_kegg <- data.table::fread('../data/all_human_pathways.txt', sep='\t')
+colnames(all_kegg) <- c('Ensembl_gene_id','Uniprotswissprot','Entrez_id','Go_id','Pathways_name')
+all_path <- plyr::count(all_kegg$Go_id) ## 347 total KEGG pathways
+wh_path <- unique(all_path[which(all_path$freq > 2), ]$x)
+allkegg <- all_kegg[all_kegg$Go_id %in% wh_path, ] ### all pathways remain
+bgSize <- length(unique(allkegg$Uniprotswissprot))
+wb1 <- openxlsx::createWorkbook(paste0(save_dir,'/KEGG_enrichment.xlsx'))
+top10 <- data.frame(matrix(ncol=4, nrow=0))
+for(k in 1:length(all_cancer)){
+
+    tempg <- splicing_tfs[[k]]
+    temp_gene <- unique(grn_filt[grn_filt$`Name.TF` %in% tempg, ]$`Name.Target`)
+    temp_gene <- unique(tf_ensemb_map[tf_ensemb_map$HGNC_symbol %in% temp_gene, ]$Uniprotswissprot)
+    # temp_gene <- unique(grn_filt[grn_filt$`UniprotID.TF` %in% temp_gene, ]$`UniprotID.Target`)
+
+    num_gene <- length(temp_gene)
+    temp_kegg <- allkegg[allkegg$Uniprotswissprot %in% temp_gene, ]
+    sampleSize <- length(unique(temp_kegg$Uniprotswissprot))
+    tempid <- unique(temp_kegg$Go_id)
+    Kterm <- c()
+    Ktermn <- c()
+    pval <- c()
+    for(j in 1:length(tempid)){
+        setA <- unique(allkegg[allkegg$Go_id == tempid[j], ]$Uniprotswissprot)
+        setB <- unique(temp_kegg[temp_kegg$Go_id == tempid[j], ]$Uniprotswissprot)
+        ## hypergeometric test
+        hyp <- phyper(length(setB)-1,length(setA),bgSize-length(setA), sampleSize,lower.tail = FALSE)
+        pval <- c(pval, hyp)
+        Kterm <- c(Kterm, tempid[j])
+        Ktermn <- c(Ktermn, unique(temp_kegg[temp_kegg$Go_id == tempid[j], ]$Pathways_name))
+    }
+
+    ktd <- data.frame(Kterm, Ktermn, pval)
+    ktd$FDR <- p.adjust(ktd$pval, 'fdr')
+    ktdx <- ktd[ktd$FDR < 0.05, ]
+    temp1a <- ktdx[order(ktdx$FDR), ]
+    temp1a$CANCER <- rep(all_cancer[k], length(temp1a[[1]]))
+    top10 <- rbind(top10, temp1a[1:10,])
+
+    #-- save excel file ---
+    colnames(temp1a) <- c('KEGG ID', 'KEGG pathway name', 'pvalue', 'FDR')
+    openxlsx::addWorksheet(wb1, sheetName = all_cancer[k])
+    openxlsx::writeData(wb1, sheet = all_cancer[k], temp1a)
+    openxlsx::saveWorkbook(wb1, paste0(save_dir,'/KEGG_enrichment.xlsx'), overwrite = T)
+
+}
+
+##---- plot -----
+
+
+
+
+##--------------------------------------------------------------------------------
 
 
 ##----- unique splicing events -----------------------------------------------------
@@ -532,7 +740,7 @@ geom_text(aes(x=cancer, y=vax, label=value), position=position_stack(vjust=1), s
 theme(axis.text.x = element_text(size = basesize, angle = 60, hjust = 0.5,vjust=0.5, colour = "black"),
 axis.text.y = element_text(size = basesize, angle = 0, hjust = 0.5,vjust=0.5, colour = "black"),
 panel.grid.major = element_blank(),panel.grid.minor = element_blank(),  
-strip.text = element_text(size = basesize), axis.title=element_text(basesize))+
+strip.text = element_text(size = basesize), axis.title=element_text(size=basesize))+
 guides(fill=guide_legend(title="Survival\nassociated",ncol=1))
 ggsave(p,filename=paste0(save_dir,"/Sig_events_unique.png"),width=4, height=2.5, dpi=500)
 

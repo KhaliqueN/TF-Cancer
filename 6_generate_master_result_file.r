@@ -18,12 +18,52 @@ all_cancer <- substr(basename(all_files), 1,4)
 
 
 perturbed_tfs <- '../results_new/TF_splicing/Perturbed_TF_splicing_events.xlsx'
-perturbed_tfs_DBD <- '../results_new/TF_DBD/Events_perturbing_DBDs.xlsx'
-perturbed_tfs_ED <- '../results_new/TF_ED/Events_perturbing_EDs.xlsx'
-perturbed_tfs_survival <- '../results_new/Survival/Perturbed_TF_splicing_events_survival.xlsx'
-perturbed_tfs_HD <- '../results_new/TF_HOMODIMER/Events_perturbing_HDs.xlsx'
-perturbed_tfs_master <- '../results_new/MRs/Master_regulators.xlsx'
-perturbed_tfs_atac <- '../results_new/Footprinting/Scatter_footprint_depth_flank.csv'
+perturbed_tfs_DBD <- '../results_new/TF_DBD/PTSEs_perturbing_DBDs.xlsx'
+perturbed_tfs_ED <- '../results_new/TF_ED/PTSEs_perturbing_EDs.xlsx'
+perturbed_tfs_FP <- '../results_new/Footprinting/Footprinting_correlation.txt'
+perturbed_tfs_DP <- '../results_new/Dependency/PTSE_dependency.xlsx'
+
+dbd_tf <- c()
+ed_tf <- c()
+dp_tf <- c()
+
+for(k in 1:length(all_cancer)){
+    tempx <- data.table::fread(all_files[k])
+    temp1 <- openxlsx::read.xlsx(perturbed_tfs_DBD, k)
+    dbd_tf <- union(dbd_tf, tempx[tempx$as_id %in% temp1$AS_ID,]$symbol)
+
+    temp1 <- openxlsx::read.xlsx(perturbed_tfs_ED, k)
+    ed_tf <- union(ed_tf, tempx[tempx$as_id %in% temp1$AS_ID,]$symbol)
+}
+
+for(k in 1:12){
+    temp1 <- openxlsx::read.xlsx(perturbed_tfs_DP, k)
+    temp1 <- temp1[temp1$MIN_CHRONOS < -1, ]
+    if(nrow(temp1) != 0){
+        dp_tf <- union(dp_tf, temp1$TF)
+    }
+}
+
+
+temp1 <- data.table::fread(perturbed_tfs_FP)
+fp_tf <- unique(temp1[temp1$FDR < 0.05, ]$TF)
+
+
+direct <- union(dbd_tf, ed_tf)
+
+indirect <- union(dp_tf, fp_tf)
+
+
+
+
+
+
+dbd <- data.table::fread(perturbed_tfs_DBD)
+
+# perturbed_tfs_survival <- '../results_new/Survival/Perturbed_TF_splicing_events_survival.xlsx'
+# perturbed_tfs_HD <- '../results_new/TF_HOMODIMER/Events_perturbing_HDs.xlsx'
+# perturbed_tfs_master <- '../results_new/MRs/Master_regulators.xlsx'
+# perturbed_tfs_atac <- '../results_new/Footprinting/Scatter_footprint_depth_flank.csv'
 
 wb1 <- openxlsx::createWorkbook(paste0('../results_new/All_results.xlsx'))
 

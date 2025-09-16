@@ -134,7 +134,7 @@ for(k in 1:length(all_cancer)){
                 temp1 <- temp1[wht,]
                 all_filesx1 <- c(all_filesx1, all_files[j])
                 events1 <- union(events1, unlist(strsplit(as.character(temp1$ES),';')) ) ##--
-                tempxg <- tempfun(as.data.frame(temp1), as.data.frame(temp), 17)
+                tempxg <- tempfun(as.data.frame(temp1), as.data.frame(temp), 15)
                 tdbd <- c(tdbd, as.character(tempxg$DBD))
                 tevents <- c(tevents, as.character(tempxg$AS))
                 taa <- c(taa, as.character(tempxg$frac))
@@ -151,7 +151,7 @@ for(k in 1:length(all_cancer)){
                 temp2 <- temp2[wht,]
                 all_filesx2 <- c(all_filesx2, all_files[j])
                 events2 <- union(events2, unlist(strsplit(as.character(temp2$AP),';')))
-                tempxg <- tempfun(as.data.frame(temp2), as.data.frame(temp), 18)
+                tempxg <- tempfun(as.data.frame(temp2), as.data.frame(temp), 16)
                 tdbd <- c(tdbd, as.character(tempxg$DBD))
                 tevents <- c(tevents, as.character(tempxg$AS))
                 taa <- c(taa, as.character(tempxg$frac))
@@ -168,7 +168,7 @@ for(k in 1:length(all_cancer)){
                 temp3 <- temp3[wht,]
                 all_filesx3 <- c(all_filesx3, all_files[j])
                 events3 <- union(events3, unlist(strsplit(as.character(temp3$AT),';')))
-                tempxg <- tempfun(as.data.frame(temp3), as.data.frame(temp), 19)
+                tempxg <- tempfun(as.data.frame(temp3), as.data.frame(temp), 17)
                 tdbd <- c(tdbd, as.character(tempxg$DBD))
                 tevents <- c(tevents, as.character(tempxg$AS))
                 taa <- c(taa, as.character(tempxg$frac))
@@ -185,7 +185,7 @@ for(k in 1:length(all_cancer)){
                 temp4 <- temp4[wht,]
                 all_filesx4 <- c(all_filesx4, all_files[j])
                 events4 <- union(events4, unlist(strsplit(as.character(temp4$AD),';')))
-                tempxg <- tempfun(as.data.frame(temp4), as.data.frame(temp), 20)
+                tempxg <- tempfun(as.data.frame(temp4), as.data.frame(temp), 18)
                 tdbd <- c(tdbd, as.character(tempxg$DBD))
                 tevents <- c(tevents, as.character(tempxg$AS))
                 taa <- c(taa, as.character(tempxg$frac))
@@ -202,7 +202,7 @@ for(k in 1:length(all_cancer)){
                 temp5 <- temp5[wht,]
                 all_filesx5 <- c(all_filesx5, all_files[j])
                 events5 <- union(events5, unlist(strsplit(as.character(temp5$AA),';')))
-                tempxg <- tempfun(as.data.frame(temp5), as.data.frame(temp), 21)
+                tempxg <- tempfun(as.data.frame(temp5), as.data.frame(temp), 19)
                 tdbd <- c(tdbd, as.character(tempxg$DBD))
                 tevents <- c(tevents, as.character(tempxg$AS))
                 taa <- c(taa, as.character(tempxg$frac))
@@ -219,7 +219,7 @@ for(k in 1:length(all_cancer)){
                 temp6 <- temp6[wht,]
                 all_filesx6 <- c(all_filesx6, all_files[j])
                 events6 <- union(events6, unlist(strsplit(as.character(temp6$ME),';')))
-                tempxg <- tempfun(as.data.frame(temp6), as.data.frame(temp), 22)
+                tempxg <- tempfun(as.data.frame(temp6), as.data.frame(temp), 20)
                 tdbd <- c(tdbd, as.character(tempxg$DBD))
                 tevents <- c(tevents, as.character(tempxg$AS))
                 taa <- c(taa, as.character(tempxg$frac))
@@ -430,7 +430,7 @@ for(k in 1:length(all_cancer)){
 
 tdata <- data.frame(CANCER=tcancer, SYMBOL=tgenet, AS=asid, SPLICE_TYPE=tsplice, DBD=odbd, MEAN_CANCER=corr1, MEAN_NORMAL=corr2, MEAN_DIFF=corr3, FDR=corr4)
 data.table::fwrite(tdata, paste0('../data/Events_perturbing_DBD.txt'), row.names=FALSE, quote=FALSE, sep='\t')
-
+## tempd <- data.table::fread('../data/Events_perturbing_DBD.txt')
 ##----------------------------------------------------------------
 dbd_purt_dt <- tdata
 
@@ -490,7 +490,7 @@ geom_text(aes(label=value), position=position_dodge(width=0.9),hjust=0, vjust=0.
 theme(axis.text.x = element_text(size = basesize, angle = 60, hjust = 0.5,vjust=0.5, colour = "black"),
 axis.text.y = element_text(size = basesize, angle = 0, hjust = 0.5,vjust=0.5, colour = "black"), 
 panel.grid.major = element_blank(),panel.grid.minor = element_blank(),
-strip.text = element_text(size = basesize), axis.title=element_text(basesize*1.25), legend.position=c(0.85,0.82))+
+strip.text = element_text(size = basesize), axis.title=element_text(size=basesize*1.25), legend.position=c(0.85,0.82))+
 guides(fill=guide_legend(title="Entity",ncol=1))
 ggsave(p,filename=paste0(save_dir,"/Sig_events_TFs.png"),width=3.5, height=3, dpi=400)
 
@@ -554,7 +554,8 @@ pdata$PL <- ""
 pdata$PL[whl] <- tolabel
 
 pdata$AA <- as.numeric(pdata$AA)
-p <- ggplot(pdata, aes(AA, MEAN_DIFF, color=CANCER, label=PL)) + 
+# p <- ggplot(pdata, aes(AA, MEAN_DIFF, color=CANCER, label=PL)) + 
+p <- ggplot(pdata, aes(AA, MEAN_DIFF, color=CANCER)) + 
 geom_point()+
 theme(legend.text=element_text(size=12))
 basesize <- 10
@@ -563,20 +564,20 @@ scale_x_continuous(name="% of DBD residues", limits=c(0,110), breaks = seq(0, 10
 scale_y_continuous(name="Mean \u0394PSI", limits=c(-0.8, 0.8)) +
 scale_color_manual(values=c('#a6cee3','#1f78b4','#b2df8a','#fb9a99','#ffff99',
     '#fdbf6f','#ff7f00','#cab2d6','#6a3d9a','#e31a1c','#b15928','black','#9e0142','#053061'))+
-geom_text_repel(family = "Poppins",
-    max.overlaps=Inf,
-                      size = 2,
-                      color='black',
-                      arrow = arrow(length = unit(0.010, "npc")),
-                      min.segment.length = 0) +
+# geom_text_repel(family = "Poppins",
+#     max.overlaps=Inf,
+#                       size = 3,
+#                       color='black',
+#                       arrow = arrow(length = unit(0.010, "npc")),
+#                       min.segment.length = 0) +
 theme_bw()+theme(axis.text.x = element_text(size = 1*basesize, angle = 60, vjust=1, hjust=1, colour = "black"),
     axis.text.y = element_text(size = 1*basesize, angle = 0, colour = "black"),
     panel.grid.major = element_blank(),panel.grid.minor = element_blank(),
-    axis.line = element_line(colour = "black"), legend.position="bottom",axis.title=element_text(size=basesize),
+    axis.line = element_line(colour = "black"),axis.title=element_text(size=1*basesize),
     legend.text=element_text(size=basesize), legend.title=element_text(size=basesize),
     panel.border = element_blank())+
-guides(color='none')
-ggsave(p,filename=paste0(save_dir,"/AA_vs_meanDiff.png"),width=4, height=3, dpi=500)
+guides(color=guide_legend(title="Cancer type", ncol=2))
+ggsave(p,filename=paste0(save_dir,"/AA_vs_meanDiff.png"),width=5, height=3, dpi=500)
 
 
 ##--- total number of events -----
@@ -840,21 +841,21 @@ pdatat$bval <- ifelse(pdatat$FRAC < 10, pdatat$FRAC, '>=10')
 cols <- c('#800026','#000000','#ffffff','#ffffcc','#ffeda0','#fed976','#feb24c','#fd8d3c','#fc4e2a','#e31a1c','#bd0026')
 # c('#08306b', '#6baed6','#deebf7', '#ffffcc','#fed976','#fd8d3c','#e31a1c','#800026')#'#2171b5', 
 # cols <- rev(brewer.pal(11,"Spectral"))
-basesize <- 8
+basesize <- 6
 p <- ggplot(pdatat, aes(DBD, CANCER)) + geom_tile(aes(fill = bval), color='black')+scale_fill_manual(values=cols)
   # scale_fill_gradientn(colors=cols)
 p <- p + theme_grey(base_size = basesize) + labs(x = "Sample", y = "Gene") +
   scale_y_discrete(name="Cancer type") +
   scale_x_discrete(name="DNA binding domain") +
-  guides(fill=guide_legend(title="# of PTSEs", size=10, ncol=2, override.aes = list(size = 2)))+
+  guides(fill=guide_legend(title="# of PTSEs", size=basesize, ncol=2, override.aes = list(size = 2)))+
   theme(axis.text.x = element_text(size = basesize * 1,angle = 60, hjust = 1,vjust=1, colour = "black"), 
                          axis.text.y = element_text(size = basesize * 1, colour='black'), 
                          panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
         axis.title.x = element_text(size=basesize*1),axis.title.y = element_text(size=basesize*1), 
         plot.title = element_text(size=basesize*1), strip.text.x = element_text(size = basesize * 1, colour = "black", angle = 0), 
         strip.text.y = element_text(size = basesize * 1, colour = "black", angle = 0), 
-        legend.text=element_text(size=10))
-ggsave(p,filename=paste0(save_dir,'/Perturbed_DBDs_tile.png'),width=5, height=4, dpi=500)
+        legend.text=element_text(size=basesize))
+ggsave(p,filename=paste0(save_dir,'/Perturbed_DBDs_tile.png'),width=4, height=3, dpi=500)
 
 
 ##--- hypergeometruc test for each DBD type ---------
@@ -945,24 +946,24 @@ alldata <- rbind(pdatax1, pdatauniy1)
 cols <- c('#a6cee3','#1f78b4','#b2df8a','#33a02c','#fb9a99','#e31a1c','#fdbf6f','#ff7f00','#cab2d6','#6a3d9a','#ffff99','#b15928',
     '#8dd3c7','#ffffb3','#bebada','#fb8072','#80b1d3','#fdb462','#b3de69','#fccde5','#d9d9d9','#bc80bd','#ccebc5','#ffed6f','#000000',
     '#ffffff','#636363','#bdbdbd')
-p <- ggplot(alldata, aes(FLAG, frac, fill=x)) + 
+p <- ggplot(alldata, aes(frac,FLAG,fill=x)) + 
 geom_bar(stat="identity",position='stack', color='black')+
 theme(legend.text=element_text(size=12))
-basesize <- 10
+basesize <- 11
 p <- p + theme_bw() +
-scale_x_discrete(name="") + 
-scale_y_continuous(name="% of occurence/perturbation") +
+scale_y_discrete(name="") + 
+scale_x_continuous(name="% of occurence/perturbation") +
 scale_fill_manual(values=cols)+
 # geom_text(aes(label=x), position=position_dodge(width=0.9),hjust=0, vjust=0, angle=75, size=3)+
   theme(axis.text.x = element_text(size = basesize * 1,angle = 60, hjust = 1,vjust=1, colour = "black"), 
                          axis.text.y = element_text(size = basesize * 1, colour='black'), 
                          panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
-        axis.title.x = element_text(size=basesize*1.2),axis.title.y = element_text(size=basesize*1.2), 
+        axis.title.x = element_text(size=basesize*1.2),axis.title.y = element_text(size=basesize*1.2), legend.position="bottom",
         plot.title = element_text(size=basesize*1), strip.text.x = element_text(size = basesize * 1, colour = "black", angle = 0), 
         strip.text.y = element_text(size = basesize * 1, colour = "black", angle = 0), 
         legend.text=element_text(size=basesize), legend.title=element_text(size=basesize*1.2))+
-guides(fill=guide_legend(title="DNA binding domain type"),ncol=2)
-ggsave(p,filename=paste0(save_dir,"/DBDs_affected_frac.png"),width=5.5, height=5, dpi=500)
+guides(fill=guide_legend(title="DBD type",ncol=2))
+ggsave(p,filename=paste0(save_dir,"/DBDs_affected_frac.png"),width=6.5, height=6, dpi=500)
 
 
 ##--------------------------------------------------------------------------
@@ -1014,7 +1015,7 @@ scale_color_manual(values=cols)+
 theme(axis.text.x = element_text(size = basesize, angle = 60, hjust = 1,vjust=1, colour = "black"),
 axis.text.y = element_text(size = basesize, angle = 0, hjust = 0.5,vjust=0.5, colour = "black"), 
 panel.grid.major = element_blank(),panel.grid.minor = element_blank(),
-strip.text = element_text(size = basesize), axis.title=element_text(basesize*1.25))+
+strip.text = element_text(size = basesize), axis.title=element_text(size=basesize*1.25))+
 guides(color='none')
 ggsave(p,filename=paste0(save_dir,"/Sig_events_DBDs.png"),width=3.5, height=4.5, dpi=500)
 
