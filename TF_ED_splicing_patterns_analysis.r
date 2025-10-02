@@ -13,24 +13,24 @@ library(pheatmap)
 library(ggrepel)
 library(ggpp)
 
-save_dir <- '../results_rep/TF_ED'
+save_dir <- 'results_rep/TF_ED'
 if(dir.exists(save_dir)){
     unlink(save_dir, recursive=TRUE)
 }
 dir.create(save_dir, recursive=TRUE)
 
-psi_input <- '../data/PSI_data'
-as_input <- '../data/uniprot_Ensembl_Exon_map_DBD_ED_AS'
+psi_input <- 'data/PSI_data'
+as_input <- 'data/uniprot_Ensembl_Exon_map_DBD_ED_AS'
 
 atleast_DBD <- 1 ## least number of ED overlapping amino acids perturbed by a splicing event X to consider the DBD as perturbed by X
-tfs <- data.table::fread('../data/filtered_TFs_curated.txt', sep='\t')
-tf_ensemb_map <- as.data.frame(data.table::fread('../data/TF_ensembl_uniprot.txt', sep='\t'))
+tfs <- data.table::fread('data/filtered_TFs_curated.txt', sep='\t')
+tf_ensemb_map <- as.data.frame(data.table::fread('data/TF_ensembl_uniprot.txt', sep='\t'))
 tcga_map <- data.table::fread(paste0(psi_input,'/TCGA_SpliceSeq_Gene_Structure.txt'))
 
 all_filesxx <- gtools::mixedsort(list.files(psi_input, pattern='*filtered_PSI_paired.txt', full.names=TRUE))
 all_filesxx <- all_filesxx[-4]
 all_cancer <- substr(basename(all_filesxx), 1,4)
-paired_sam <- data.table::fread('../data/cancer_paired_samples.txt')
+paired_sam <- data.table::fread('data/cancer_paired_samples.txt')
 paired_sam <- paired_sam[-4]
 ## Some of the event coordinates from TCGA splice seq does not overlap to any of the exons mapped from the canonical protein
 ## sequence from Uniprot. This is because the canonical seqeunce is not always the longest.
@@ -334,7 +334,7 @@ for(k in 1:length(all_cancer)){
                 counter <- counter+1
                 next
             } ## some gene symbols of TFs from TCGA SpliceSeq were not mapped to Ensembl
-            tmap <- as.data.frame(data.table::fread(paste0('../data/uniprot_Ensembl_Exon_map_DBD_ED_AS/',tuni,'_',all_cancer[k],'.txt')))
+            tmap <- as.data.frame(data.table::fread(paste0(as_input,'/',tuni,'_',all_cancer[k],'.txt')))
             
             if(tempyy$splice_type[j] == 'AP'){
                 tempy1 <- strsplit(as.character(tmap$AP),';')
@@ -407,7 +407,7 @@ for(k in 1:length(all_cancer)){
 }
 
 tdata <- data.frame(CANCER=tcancer, SYMBOL=tgenet, AS=asid, SPLICE_TYPE=tsplice, ED=odbd, MEAN_CANCER=corr1, MEAN_NORMAL=corr2, MEAN_DIFF=corr3, FDR=corr4)
-data.table::fwrite(tdata, paste0('../data/Events_perturbing_ED.txt'), row.names=FALSE, quote=FALSE, sep='\t')
+data.table::fwrite(tdata, paste0('data/Events_perturbing_ED.txt'), row.names=FALSE, quote=FALSE, sep='\t')
 ## tempd <- data.table::fread('../data/Events_perturbing_ED.txt')
 
 ##----------------------------------------------------------------
@@ -915,9 +915,9 @@ ggsave(p,filename=paste0(save_dir,"/EDs_affected_frac.png"),width=3.5, height=5,
 
 
 #####------ overlap between TFs with DBD perturbations and TFs with ED perturbations-----
-perturbed_tfs <- '../results_new/TF_splicing/Supplementary_file_S1.xlsx'
-perturbed_tfs_DBD <- '../results_new/TF_DBD/Supplementary_file_S4.xlsx'
-perturbed_tfs_ED <- '../results_new/TF_ED/Supplementary_file_S5.xlsx'
+perturbed_tfs <- 'results_rep/TF_splicing/Supplementary_file_S1.xlsx'
+perturbed_tfs_DBD <- 'results_rep/TF_DBD/Supplementary_file_S4.xlsx'
+perturbed_tfs_ED <- 'results_rep/TF_ED/Supplementary_file_S5.xlsx'
 temp_dbd <- c()
 temp_ed <- c()
 temp_all <- c()

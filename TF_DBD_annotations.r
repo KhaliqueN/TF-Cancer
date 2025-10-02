@@ -10,22 +10,22 @@ library(GenomicDataCommons)
 library(biomaRt)
 library(seqinr)
 
-tfs <- data.table::fread('../data/filtered_TFs.txt', sep='\t')
+tfs <- data.table::fread('data/filtered_TFs.txt', sep='\t')
 
 ## Proteins from Uniprot...these are reviewed entries --- downloaded 5th March 2025 -------------------
-system("wget -O ../../../public_data/uniprot_sprot.dat.gz https://ftp.uniprot.org/pub/databases/uniprot/current_release/knowledgebase/complete/uniprot_sprot.dat.gz")
-system("gunzip --force ../../../public_data/uniprot_sprot.dat.gz")
+system("wget -O data/uniprot_sprot.dat.gz https://ftp.uniprot.org/pub/databases/uniprot/current_release/knowledgebase/complete/uniprot_sprot.dat.gz")
+system("gunzip --force data/uniprot_sprot.dat.gz")
 
 ## save separate files for uniprot entries ---- takes time and hence should be run once ---
-uniprot_dir <- '../../../public_data/UniProt_database'
+uniprot_dir <- 'data/UniProt_database'
 unlink(uniprot_dir,recursive=TRUE)
 dir.create(uniprot_dir)
-system("awk '/^ID/{if(NR!=1){for(i=0;i<j;i++)print a[i]>\"../../../public_data/UniProt_database/file\"k;j=0;k++;}a[j++]=$0;next}{a[j++]=$0;}END{for(i=0;i<j;i++)print a[i]>\"../../../public_data/UniProt_database\"k}' i=0 k=1  ../../../public_data/uniprot_sprot.dat")
+system("awk '/^ID/{if(NR!=1){for(i=0;i<j;i++)print a[i]>\"data/UniProt_database/file\"k;j=0;k++;}a[j++]=$0;next}{a[j++]=$0;}END{for(i=0;i<j;i++)print a[i]>\"data/UniProt_database\"k}' i=0 k=1  data/uniprot_sprot.dat")
 
 
 ## filter to only retain Homo sapiens -----
 allfiles <- list.files(uniprot_dir, full.names=TRUE)
-output_dir <- '../../../public_data/UniProt_database_HS'
+output_dir <- 'data/UniProt_database_HS'
 ## unlink(output_dir, recursive=TRUE)
 dir.create(output_dir)
 counter <- 0
@@ -54,7 +54,7 @@ for(k in 1:length(allfiles)){
 
 
 ##----- save uniprot ensembl mapping -------------------------------
-output_dir <- '../../../public_data/UniProt_database_HS'
+output_dir <- 'data/UniProt_database_HS'
 allfiles <- list.files(output_dir, full.names=TRUE)
 temp_trans <- c()
 temp_prot <- c()
@@ -111,16 +111,16 @@ for(k in 1:length(allfiles)){
 map_data <- data.frame(Uniprotswissprot=temp_unip, Ensembl_gene_id=temp_gene, 
     Ensembl_protein_id=temp_prot, Ensembl_transcript_id=temp_trans, HGNC_symbol=temp_hgnc)
 
-data.table::fwrite(map_data, '../data/Uniprot_ensembl_map.txt', sep='\t', row.names=FALSE, quote=FALSE)
+data.table::fwrite(map_data, 'data/Uniprot_ensembl_map.txt', sep='\t', row.names=FALSE, quote=FALSE)
 
 ##------------------------------------------------------------------
 
 ### saving uniprot AA sequences ------------------------------------
 ## right now saving the canonical sequence of a protein. Other transcripts could be longer
 ## Next version should consider saving the longest coding seqeunce---
-uniprot_HS_dir <- '../../../public_data/UniProt_database_HS'
+uniprot_HS_dir <- 'data/UniProt_database_HS'
 allfiles <- list.files(uniprot_HS_dir, full.names=TRUE)
-output_file <- '../data/uniprot_sequences_HS.txt'
+output_file <- 'data/uniprot_sequences_HS.txt'
 if(file.exists(output_file)){file.remove(output_file)}
 uniprot_name <- c()
 uniprot_id <- c()
@@ -152,7 +152,7 @@ for(k in 1:length(allfiles)){
 }
 
 uniprot_name_id_map <- data.frame(Name=uniprot_name, ID=uniprot_id)
-data.table::fwrite(uniprot_name_id_map,'../data/uniprot_name_id_map.txt',sep='\t', row.names=FALSE, quote=FALSE)
+data.table::fwrite(uniprot_name_id_map,'data/uniprot_name_id_map.txt',sep='\t', row.names=FALSE, quote=FALSE)
 
 ##---Ensembl mapping -------------------------------------------------------
 substrRight <- function(x, n){
@@ -170,29 +170,21 @@ cleanSeq <- function(x){
 
 ##--- TCGASPLiceseq uses GRCh37 build ------
 # Ensemble genome download -------------------------
-xx <- "Homo_sapiens.GRCh38.dna.primary_assembly.fa.gz"
-system(paste0("wget -O ../../../public_data/",xx," https://ftp.ensembl.org/pub/release-113/fasta/homo_sapiens/dna/",xx))
-system(paste0("gunzip ../../../public_data/",xx))
-
-# download GTF file from Ensembl
-xx <- "Homo_sapiens.GRCh38.113.gtf.gz"
-system(paste0("wget -O ../../../public_data/",xx," http://ftp.ensembl.org/pub/current_gtf/homo_sapiens/",xx))
-system(paste0("gunzip ../../../public_data/",xx))
 
 xx <- "Homo_sapiens.GRCh37.dna.primary_assembly.fa.gz"
-system(paste0("wget -O ../../../public_data/",xx," https://ftp.ensembl.org/pub/grch37/release-113/fasta/homo_sapiens/dna/",xx))
-system(paste0("gunzip ../../../public_data/",xx))
+system(paste0("wget -O data/",xx," https://ftp.ensembl.org/pub/grch37/release-113/fasta/homo_sapiens/dna/",xx))
+system(paste0("gunzip data/",xx))
 
 # https://ftp.ensembl.org/pub/grch37/release-113/gtf/homo_sapiens/Homo_sapiens.GRCh37.87.gtf.gz
 # download GTF file from Ensembl
 xx <- "Homo_sapiens.GRCh37.87.gtf.gz"
-system(paste0("wget -O ../../../public_data/",xx," http://ftp.ensembl.org/pub/grch37/release-113/gtf/homo_sapiens/",xx))
-system(paste0("gunzip ../../../public_data/",xx))
+system(paste0("wget -O data/",xx," http://ftp.ensembl.org/pub/grch37/release-113/gtf/homo_sapiens/",xx))
+system(paste0("gunzip data/",xx))
 
 # preprocess
 system('sh ./preprocess_exons.sh')
-exons <- fread('../data/processed_exons.tmp',sep='\t')
-cds <- fread('../data/processed_cds.tmp',sep='\t')
+exons <- fread('data/processed_exons.tmp',sep='\t')
+cds <- fread('data/processed_cds.tmp',sep='\t')
 
 
 xxs <- strsplit(exons$V9, '[;]')
@@ -228,8 +220,8 @@ exons$exon_number <- exon_number
 exons$exon_id <- exon_id
 
 exons_f <- exons[,-9]
-data.table::fwrite(exons_f, '../data/Ensembl_exons.txt', sep='\t', quote=FALSE, row.names=FALSE)
-exons_f <- data.table::fread('../data/Ensembl_exons.txt', header=TRUE)
+data.table::fwrite(exons_f, 'data/Ensembl_exons.txt', sep='\t', quote=FALSE, row.names=FALSE)
+exons_f <- data.table::fread('data/Ensembl_exons.txt', header=TRUE)
 
 
 #### CDS
@@ -261,8 +253,8 @@ cds$exon_number <- exon_number
 cds$nt_len <- (cds$V5-cds$V4)+1
 
 cds_f <- cds[,-9]
-fwrite(cds_f, '../data/Ensembl_exon_cds.txt', sep='\t', quote=FALSE, row.names=FALSE)
-cds_f <- fread('../data/Ensembl_exon_cds.txt', header=TRUE)
+fwrite(cds_f, 'data/Ensembl_exon_cds.txt', sep='\t', quote=FALSE, row.names=FALSE)
+cds_f <- fread('data/Ensembl_exon_cds.txt', header=TRUE)
 
 
 # # get the uniprot emsemble mapping ##### USE OF BIOMART --------------------------------------------------------
@@ -270,10 +262,10 @@ cds_f <- fread('../data/Ensembl_exon_cds.txt', header=TRUE)
 
 ##-- read the genome -----
 # priassm <- '../../../public_data/Homo_sapiens.GRCh38.dna.primary_assembly.fa'
-priassm <- '../../../public_data/Homo_sapiens.GRCh37.dna.primary_assembly.fa'
+priassm <- 'data/Homo_sapiens.GRCh37.dna.primary_assembly.fa'
 genome <- seqinr::read.fasta(priassm)
 
-all_map <- data.table::fread('../data/Uniprot_ensembl_map.txt')
+all_map <- data.table::fread('data/Uniprot_ensembl_map.txt')
 all_map$Ensembl_gene_id <- unlist(lapply(strsplit(all_map$Ensembl_gene_id, '[.]'),'[[',1))
 temp_map <- all_map[all_map$Ensembl_gene_id %in% tfs[[1]], ]
 temp_map$Uniprotswissprot <- unlist(lapply(strsplit(temp_map$Uniprotswissprot, '[-]'),'[[',1))
@@ -292,7 +284,7 @@ temp_map$Ensembl_transcript_id <- unlist(lapply(strsplit(temp_map$Ensembl_transc
 
 ##--- select the transcript corresponding to the sequence present in the uniprot database ---
 ##--- using global alignment ----
-uniprot_seqs <- seqinr::read.fasta('../data/uniprot_sequences_HS.txt', seqtype="AA", whole.header=TRUE)
+uniprot_seqs <- seqinr::read.fasta('data/uniprot_sequences_HS.txt', seqtype="AA", whole.header=TRUE)
 #unique(unlist(lapply(strsplit(temp_map$UNIPROT,'[-]'),'[[',1)))
 ensemblids <- unique(temp_map$Ensembl_gene_id)
 
@@ -376,17 +368,17 @@ temp_mapz <- merge(temp_mapx, temp_map, by='Ensembl_transcript_id')
 ## intersect between uniprots here and TFs -- intersect(temp_mapz$Ensembl_gene_id, tfs[[1]])
 temp_mapz <- temp_mapz[,-2]
 colnames(temp_mapz) <- c('Ensembl_transcript_id','Uniprotswissprot',colnames(temp_mapz)[-c(1,2)])
-data.table::fwrite(temp_mapz,'../data/TF_ensembl_uniprot.txt', sep='\t', row.names=FALSE, quote=FALSE)
+data.table::fwrite(temp_mapz,'data/TF_ensembl_uniprot.txt', sep='\t', row.names=FALSE, quote=FALSE)
 
 
 ##------- do the exon mapping to uniprot sequences -------------------------------------
-temp_map <- data.table::fread('../data/TF_ensembl_uniprot.txt')
+temp_map <- data.table::fread('data/TF_ensembl_uniprot.txt')
 uniprot_uni_ids <- temp_map$Uniprotswissprot
 transcript_uni_ids <- temp_map$Ensembl_transcript_id
 
 ##-- map exons to uniprot sequences -------------
 ##-- store the mappings -------------------------
-store_dir <- '../data/uniprot_Ensembl_Exon_map'
+store_dir <- 'data/uniprot_Ensembl_Exon_map'
 if(dir.exists(store_dir)){
     unlink(store_dir, recursive=TRUE)
 }
@@ -508,10 +500,10 @@ for(k in 1:length(transcript_uni_ids)){
 ##----------- Add DBD information for the TFs from UniProt files ------------------------
 # Check that it doesn't match any non-number
 numbers_only <- function(x) !grepl("\\D", x)
-store_dir <- '../data/uniprot_Ensembl_Exon_map'
+store_dir <- 'data/uniprot_Ensembl_Exon_map'
 # data.table::fwrite(uniprot_name_id_map,'../data/uniprot_name_id_map.txt',sep='\t', row.names=FALSE, quote=FALSE)
 
-uniprot_name_id_map <- data.table::fread('../data/uniprot_name_id_map.txt')
+uniprot_name_id_map <- data.table::fread('data/uniprot_name_id_map.txt')
 allfiles <- list.files(store_dir,full.names=TRUE)
 DBDs <- c()
 pro_dbd <- c()

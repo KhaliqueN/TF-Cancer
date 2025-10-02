@@ -15,7 +15,7 @@ library(GenomicDataCommons)
 library(pheatmap)
 library(dplyr)
 
-save_dir <- '../results_rep/TF_splicing'
+save_dir <- 'results_rep/TF_splicing'
 
 if(dir.exists(save_dir)){
 	unlink(save_dir, recursive=TRUE)
@@ -29,11 +29,11 @@ brca_subtype <- brca_subtype[,c(1,12)]
 ###---------------------------------------
 
 ## TFs -------------------
-tfs <- data.table::fread('../data/filtered_TFs_curated.txt', sep='\t')
-paired_sam <- data.table::fread('../data/cancer_paired_samples.txt')
+tfs <- data.table::fread('data/filtered_TFs_curated.txt', sep='\t')
+paired_sam <- data.table::fread('data/cancer_paired_samples.txt')
 ##----------------------------------------------------------------------
 
-input_dir <- '../data/PSI_data'
+input_dir <- 'data/PSI_data'
 fdr <- 0.05
 # num_sams <- 0.5
 all_files <- gtools::mixedsort(list.files(input_dir, pattern='*filtered_PSI_paired.txt', full.names=TRUE))
@@ -475,7 +475,7 @@ pdx <- t(as.matrix(pdata_mat))#as.matrix(pdata_mat)#
 p <- pheatmap(pdx,fontsize=3, cluster_rows=FALSE, cluster_cols=FALSE,cellheight=5, cellwidth = 5)
 ggsave(p,filename=paste0(save_dir, "/Pancancer_events.png"),width=5, height=7, dpi=600)
 
-saveRDS(num_events_combs, file = "../data/overlapping_events.rds")
+saveRDS(num_events_combs, file = "data/overlapping_events.rds")
 
 ##--------------------------------------------------------------------------------
 
@@ -506,12 +506,12 @@ for(k in 1:length(all_cancer)){
 
 pdata <- data.frame(cancer=all_cancer, count=lengths(num_events_unq))
 
-saveRDS(num_events_unq, file = "../data/unique_events.rds")
+saveRDS(num_events_unq, file = "data/unique_events.rds")
 
 ##--- Overlap with the survival associated events ---------------
 ## Study: OncoSplicing: an updated database for clinically relevant alternative splicing in 33 human cancers, NAR, 2022
 ## Downloaded http://47.98.127.64:8080/beta/download?fileName=spliceseq_clinical_as_survival.csv.gz
-splicing <- data.table::fread('../data/spliceseq_clinical_as_survival.csv')
+splicing <- data.table::fread('data/spliceseq_clinical_as_survival.csv')
 splicing <- as.data.frame(splicing)
 
 all_survival <- list()

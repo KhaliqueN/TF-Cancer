@@ -11,25 +11,25 @@ library(biomaRt)
 library(seqinr)
 options(warn=2)
 
-input_dir <- '../data/PSI_data'
-input_dirx <- '../data/uniprot_Ensembl_Exon_map_DBD_AS'
-output_dir <- '../data/uniprot_Ensembl_Exon_map_DBD_ED_AS'
+input_dir <- 'data/PSI_data'
+input_dirx <- 'data/uniprot_Ensembl_Exon_map_DBD_AS'
+output_dir <- 'data/uniprot_Ensembl_Exon_map_DBD_ED_AS'
 
 if(dir.exists(output_dir)){
     unlink(output_dir, recursive=TRUE)
 }
 dir.create(output_dir, recursive=TRUE)
 
-tf_ensemb_map <- as.data.frame(data.table::fread('../data/TF_ensembl_uniprot.txt', sep='\t'))
+tf_ensemb_map <- as.data.frame(data.table::fread('data/TF_ensembl_uniprot.txt', sep='\t'))
 tf_ensemb_map$Ensembl_protein_id <- unlist(lapply(strsplit(tf_ensemb_map$Ensembl_protein_id, '[.]'), '[[',1))
 
 all_filesx <- list.files(input_dirx, pattern='*.txt', full.names=TRUE)
 alluni <- unlist(lapply(strsplit(basename(all_filesx), '[_]'),'[[',1))
 all_uniprot <- unique(alluni)
 
-ed_file1 <- as.data.frame(readxl::read_excel('../data/1-s2.0-S1097276521009576-mmc8.xlsx', 7))
+ed_file1 <- as.data.frame(readxl::read_excel('data/1-s2.0-S1097276521009576-mmc8.xlsx', 7))
 ed_file1 <- ed_file1[, c(1,2)]
-ed_file2 <- as.data.frame(readxl::read_excel('../data/1-s2.0-S1097276521009576-mmc8.xlsx', 5))
+ed_file2 <- as.data.frame(readxl::read_excel('data/1-s2.0-S1097276521009576-mmc8.xlsx', 5))
 ed_file2 <- ed_file2[, c(1,2,3,4,5,6,9)]
 ## From this study: Compendium of human transcription factor effector domains, Molecular Cell 2022
 ed_file <- merge(ed_file1, ed_file2, by='Effector domain ID')

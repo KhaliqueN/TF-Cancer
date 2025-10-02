@@ -10,9 +10,9 @@ library(GenomicDataCommons)
 library(biomaRt)
 library(seqinr)
 
-input_dir <- '../data/PSI_data'
-input_dirx <- '../data/uniprot_Ensembl_Exon_map'
-output_dir <- '../data/uniprot_Ensembl_Exon_map_DBD_AS'
+input_dir <- 'data/PSI_data'
+input_dirx <- 'data/uniprot_Ensembl_Exon_map'
+output_dir <- 'data/uniprot_Ensembl_Exon_map_DBD_AS'
 
 if(dir.exists(output_dir)){
     unlink(output_dir, recursive=TRUE)
@@ -20,8 +20,8 @@ if(dir.exists(output_dir)){
 dir.create(output_dir, recursive=TRUE)
 
 fdr <- 0.05
-tfs <- data.table::fread('../data/filtered_TFs_curated.txt', sep='\t')
-tf_ensemb_map <- as.data.frame(data.table::fread('../data/TF_ensembl_uniprot.txt', sep='\t'))
+tfs <- data.table::fread('data/filtered_TFs_curated.txt', sep='\t')
+tf_ensemb_map <- as.data.frame(data.table::fread('data/TF_ensembl_uniprot.txt', sep='\t'))
 # colnames(tf_ensemb_map) <- c('Ensembl_transcript_id','Uniprotswissprot','Ensembl_gene_id','Ensembl_protein_id')
 
 tcga_map <- data.table::fread(paste0(input_dir,'/TCGA_SpliceSeq_Gene_Structure.txt'))

@@ -8,20 +8,20 @@ library(data.table)
 library(ggplot2)
 library(GenomicDataCommons)
 library(pheatmap)
-library(cowplot)
+# library(cowplot)
 library(ggrepel)
 
-save_dir <- '../results_rep/Dependency'
+save_dir <- 'results_rep/Dependency'
 if(dir.exists(save_dir)){
     unlink(save_dir, recursive=TRUE)
 }
 dir.create(save_dir, recursive=TRUE)
 
 ##-- TFs -------------------
-tfs <- data.table::fread('../data/filtered_TFs_curated.txt', sep='\t')
+tfs <- data.table::fread('data/filtered_TFs_curated.txt', sep='\t')
 ## Downloaded from : https://depmap.org/portal/data_page/?tab=customDownloads
 ## CRISPR -- exclude NA -- all celllines -- all genes --add celline metadata -- merge into single file
-dep_map <- as.data.frame(data.table::fread('../data/CRISPR_(DepMap_Public_25Q2+Score,_Chronos)_subsetted.csv'))
+dep_map <- as.data.frame(data.table::fread('data/CRISPR_(DepMap_Public_25Q2+Score,_Chronos)_subsetted.csv'))
 all_lin2 <- unique(dep_map$lineage_3)
 cols <- colnames(dep_map)
 c2consi <- list("Bladder Urothelial","Breast Invasive Carcinoma","Colorectal Adenocarcinoma",
@@ -31,7 +31,7 @@ c2consi <- list("Bladder Urothelial","Breast Invasive Carcinoma","Colorectal Ade
 filt_cancer <- c('BLCA', 'BRCA','COAD','HNSC','KIRC', 'LIHC', 'LUAD','LUSC','PRAD','STAD','THCA','UCEC')
 ##----------------------------------------------------------------------
 
-input_dir <- '../data/PSI_data'
+input_dir <- 'data/PSI_data'
 fdr <- 0.05
 all_files <- gtools::mixedsort(list.files(input_dir, pattern='*filtered_PSI_paired.txt', full.names=TRUE))
 all_files_raw <- gtools::mixedsort(list.files(input_dir, pattern='^PSI_download', full.names=TRUE))
@@ -41,7 +41,7 @@ all_files_raw <- all_files_raw[-4]
 
 all_cancer <- substr(basename(all_files), 1,4)
 
-paired_sam <- data.table::fread('../data/cancer_paired_samples.txt')
+paired_sam <- data.table::fread('data/cancer_paired_samples.txt')
 paired_sam <- paired_sam[-4]
 
 ##------------------------------------------------

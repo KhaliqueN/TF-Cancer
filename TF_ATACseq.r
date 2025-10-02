@@ -11,14 +11,14 @@ library(ggrepel)
 library(dplyr)
 library(GenomicDataCommons)
 
-save_dir <- '../results_rep/Footprinting'
+save_dir <- 'results_rep/Footprinting'
 if(dir.exists(save_dir)){
     unlink(save_dir, recursive=TRUE)
 }
 dir.create(save_dir, recursive=TRUE)
 
 ##-- TFs -------------------
-tfs <- data.table::fread('../data/filtered_TFs_curated.txt', sep='\t')
+tfs <- data.table::fread('data/filtered_TFs_curated.txt', sep='\t')
 
 # dbd_purt <- data.table::fread('../data/Events_perturbing_DBD.txt')
 # ed_purt <- data.table::fread('../data/Events_perturbing_ED.txt')
@@ -27,7 +27,7 @@ tfs <- data.table::fread('../data/filtered_TFs_curated.txt', sep='\t')
 # paired_sam <- data.table::fread('../data/cancer_paired_samples.txt')
 # paired_sam <- paired_sam[-4]
 
-input_dir <- '../data/PSI_data'
+input_dir <- 'data/PSI_data'
 fdr <- 0.05
 sample_size <- 10
 all_files <- gtools::mixedsort(list.files(input_dir, pattern='*filtered_PSI_paired.txt', full.names=TRUE))
@@ -40,7 +40,7 @@ all_cancer <- substr(basename(all_files), 1,4)
 
 ## Footprinting depth data ---------------
 ## From this study: The chromatin accessibility landscape of primary human cancers ----
-tmas <- as.data.frame(readxl::read_excel('../data/aav1898_data_s6.xlsx', 1))
+tmas <- as.data.frame(readxl::read_excel('data/aav1898_data_s6.xlsx', 1))
 tmasx <- tmas[17:length(tmas[[1]]),]
 colnames(tmasx) <- tmasx[1,]
 tmasx <- tmasx[-1,]
@@ -161,7 +161,7 @@ TF_depth_all$ID <- paste0(TF_depth_all$ASID,'_',TF_depth_all$CANCER, '_', TF_dep
 
 ## Footprinting flanking data ---------------
 ## From this study: The chromatin accessibility landscape of primary human cancers ----
-tmas <- as.data.frame(readxl::read_excel('../data/aav1898_data_s6.xlsx', 2))
+tmas <- as.data.frame(readxl::read_excel('data/aav1898_data_s6.xlsx', 2))
 tmasx <- tmas[17:length(tmas[[1]]),]
 colnames(tmasx) <- tmasx[1,]
 tmasx <- tmasx[-1,]
