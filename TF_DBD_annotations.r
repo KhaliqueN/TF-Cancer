@@ -169,6 +169,7 @@ cleanSeq <- function(x){
 }
 
 ##--- TCGASPLiceseq uses GRCh37 build ------
+##--- Hence GRCh37 build was used here too
 # Ensemble genome download -------------------------
 
 xx <- "Homo_sapiens.GRCh37.dna.primary_assembly.fa.gz"
@@ -257,11 +258,7 @@ fwrite(cds_f, 'data/Ensembl_exon_cds.txt', sep='\t', quote=FALSE, row.names=FALS
 cds_f <- fread('data/Ensembl_exon_cds.txt', header=TRUE)
 
 
-# # get the uniprot emsemble mapping ##### USE OF BIOMART --------------------------------------------------------
-# ensembl <- useEnsembl(biomart = "genes", dataset = "hsapiens_gene_ensembl", mirror='useast') # useast uswest asia
-
 ##-- read the genome -----
-# priassm <- '../../../public_data/Homo_sapiens.GRCh38.dna.primary_assembly.fa'
 priassm <- 'data/Homo_sapiens.GRCh37.dna.primary_assembly.fa'
 genome <- seqinr::read.fasta(priassm)
 
@@ -271,21 +268,10 @@ temp_map <- all_map[all_map$Ensembl_gene_id %in% tfs[[1]], ]
 temp_map$Uniprotswissprot <- unlist(lapply(strsplit(temp_map$Uniprotswissprot, '[-]'),'[[',1))
 temp_map$Ensembl_transcript_id <- unlist(lapply(strsplit(temp_map$Ensembl_transcript_id, '[.]'),'[[',1))
 
-# temp_map <- temp_map[temp_map$UNIPROT == '', ]
-# temp_map1 <- unique(temp_map[,c(1,13)])
-# temp_count <- plyr::count(temp_map1$Uniprotswissprot)
-# wh1 <- which(temp_map$Uniprotswissprot %in% temp_count[[1]][which(temp_count$freq > 1)])
-# temp_count <- plyr::count(temp_map1$Ensembl_gene_id)
-# wh2 <- which(temp_map$Ensembl_gene_id %in% temp_count[[1]][which(temp_count$freq > 1)])
-# wh <- union(wh1, wh2)
-# temp_map <- temp_map[-wh, ]
-## 2720 out of the 2765 TFs have one-to-one Ensembl ids and uniprot ids mapped
-
 
 ##--- select the transcript corresponding to the sequence present in the uniprot database ---
 ##--- using global alignment ----
 uniprot_seqs <- seqinr::read.fasta('data/uniprot_sequences_HS.txt', seqtype="AA", whole.header=TRUE)
-#unique(unlist(lapply(strsplit(temp_map$UNIPROT,'[-]'),'[[',1)))
 ensemblids <- unique(temp_map$Ensembl_gene_id)
 
 
@@ -361,11 +347,6 @@ for(k in 1:length(ensemblids)){
 temp_mapx <- data.frame(Uniprotswissprot=uniprotids, Ensembl_transcript_id=bh_transcripts)
 temp_mapx <- temp_mapx[temp_mapx$Ensembl_transcript_id != '',]
 temp_mapz <- merge(temp_mapx, temp_map, by='Ensembl_transcript_id')
-# temp_mapz <- unique(temp_mapy[, c(1,2,3,14)])
-# wh <- which(temp_mapz$Ensembl_transcript == '')
-# temp_mapz <- temp_mapz[-wh,]
-## out of 2720 TFs, 2474 have a 100% transcipt match between uniprot protein and an Ensembl transcript
-## intersect between uniprots here and TFs -- intersect(temp_mapz$Ensembl_gene_id, tfs[[1]])
 temp_mapz <- temp_mapz[,-2]
 colnames(temp_mapz) <- c('Ensembl_transcript_id','Uniprotswissprot',colnames(temp_mapz)[-c(1,2)])
 data.table::fwrite(temp_mapz,'data/TF_ensembl_uniprot.txt', sep='\t', row.names=FALSE, quote=FALSE)
@@ -587,9 +568,7 @@ for(k in 1:length(allfiles)){
             temp_binds <- c(temp_binds, dna_bind_domain)
         }
     }
-    # if('Homeobox' %in% temp_binds){
-    #     break
-    # }
+
 
     ##--- loop for bHLH ------
     to_consider_domains <- c('bHLH','bZIP','MADS-box')
@@ -628,8 +607,6 @@ for(k in 1:length(allfiles)){
     }
     
     temp_file$DBD <- dna_bind
-    # temp_file$PROSITE <- PROSITE
-    # temp_file$EVIDENCE <- EVID
 
     DBDs_list[[k]] <- temp_binds
     data.table::fwrite(temp_file, paste0(store_dir,'/',temp_uniprot,'.txt'), row.names=FALSE, sep='\t', quote=FALSE)

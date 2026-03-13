@@ -33,7 +33,7 @@ filt_cancer <- c('BLCA', 'BRCA','COAD','HNSC','KIRC', 'LIHC', 'LUAD','LUSC','PRA
 
 input_dir <- 'data/PSI_data'
 fdr <- 0.05
-all_files <- gtools::mixedsort(list.files(input_dir, pattern='*filtered_PSI_paired.txt', full.names=TRUE))
+all_files <- gtools::mixedsort(list.files(input_dir, pattern='*PSI_paired.txt', full.names=TRUE))
 all_files_raw <- gtools::mixedsort(list.files(input_dir, pattern='^PSI_download', full.names=TRUE))
 
 all_files <- all_files[-4]

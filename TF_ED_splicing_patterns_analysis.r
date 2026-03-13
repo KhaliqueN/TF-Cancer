@@ -27,7 +27,7 @@ tfs <- data.table::fread('data/filtered_TFs_curated.txt', sep='\t')
 tf_ensemb_map <- as.data.frame(data.table::fread('data/TF_ensembl_uniprot.txt', sep='\t'))
 tcga_map <- data.table::fread(paste0(psi_input,'/TCGA_SpliceSeq_Gene_Structure.txt'))
 
-all_filesxx <- gtools::mixedsort(list.files(psi_input, pattern='*filtered_PSI_paired.txt', full.names=TRUE))
+all_filesxx <- gtools::mixedsort(list.files(psi_input, pattern='*PSI_paired.txt', full.names=TRUE))
 all_filesxx <- all_filesxx[-4]
 all_cancer <- substr(basename(all_filesxx), 1,4)
 paired_sam <- data.table::fread('data/cancer_paired_samples.txt')
@@ -831,7 +831,7 @@ p <- p + theme_grey(base_size = basesize) + labs(x = "Sample", y = "Gene") +
         plot.title = element_text(size=basesize*1), strip.text.x = element_text(size = basesize * 1, colour = "black", angle = 0), 
         strip.text.y = element_text(size = basesize * 1, colour = "black", angle = 0), 
         legend.text=element_text(size=10))
-ggsave(p,filename=paste0(save_dir,'/Perturbed_DBDs_tile.png'),width=3.5, height=4, dpi=500)
+ggsave(p,filename=paste0(save_dir,'/Perturbed_EDs_tile.png'),width=3.5, height=4, dpi=500)
 
 
 ##--- hypergeometruc test for each ED type ---------
@@ -950,7 +950,7 @@ pdata$count <- (pdata$countx/sum(pdata$countx))*100
 # pdata$count <- pdata$countx
 library(scales)
 library(ggrepel)
-library(tidyverse)
+# library(tidyverse)
 
 pdata$count <- signif(pdata$count, 3)
 df2 <- pdata %>% 

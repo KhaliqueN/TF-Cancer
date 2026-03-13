@@ -26,7 +26,7 @@ tf_ensemb_map <- as.data.frame(data.table::fread('data/TF_ensembl_uniprot.txt', 
 
 tcga_map <- data.table::fread(paste0(input_dir,'/TCGA_SpliceSeq_Gene_Structure.txt'))
 
-all_files <- gtools::mixedsort(list.files(input_dir, pattern='*filtered_PSI_paired.txt', full.names=TRUE))
+all_files <- gtools::mixedsort(list.files(input_dir, pattern='*PSI_paired.txt', full.names=TRUE))
 all_files <- all_files[-4]
 all_filesx <- list.files(input_dirx, pattern='*.txt', full.names=TRUE)
 all_filesx <- all_filesx[-4]
@@ -52,8 +52,8 @@ for(k in 1:length(all_cancer)){
     eid <- tf_ensemb_map[which(tf_ensemb_map$Uniprotswissprot %in% tid),]$Ensembl_gene_id
     back_symbols <- tfs[which(tfs$Ensembl_Gene_ID %in% eid), ]$Gene_Symbol 
     ## Out of 1639 curated TFs, 1469 are also present in the exon mapping file
-    ### So, the splice event information will be stored for these 1460 TFs
-    ## 1314 of the 1460 TFs have DBD informaiton in the Uniprot
+    ### So, the splice event information will be stored for these 1469 TFs
+    ## 1314 of the 1469 TFs have DBD informaiton in the Uniprot
     
     all_symbol <- intersect(all_symbolx, back_symbols)
     rest_symbols <- setdiff(back_symbols, all_symbol)
@@ -154,7 +154,7 @@ for(k in 1:length(all_cancer)){
     rest_symbols <- setdiff(back_symbols, all_symbol)
 
     if(length(all_symbol) != 0){
-        for(j in 1:length(all_symbol)){ ## for k=1, you can check for j=6 and i=2
+        for(j in 1:length(all_symbol)){ ## for k=1, you can check for j=? and i=?
 
             tempz1 <- tempz[tempz$symbol == all_symbol[j], ]
 
@@ -244,7 +244,7 @@ for(k in 1:length(all_cancer)){
     tid <- unlist(lapply(strsplit(unlist(lapply(strsplit(basename(all_filesx), '[_]'),'[[',1)), '[.]'),'[[',1))
     eid <- tf_ensemb_map[which(tf_ensemb_map$Uniprotswissprot %in% tid),]$Ensembl_gene_id
     back_symbols <- tfs[which(tfs$Ensembl_Gene_ID %in% eid), ]$Gene_Symbol 
-    ## Out of 1639 curated TFs, 1460 are also present in the exon mapping file
+    ## Out of 1639 curated TFs, 1469 are also present in the exon mapping file
     ### So, the splice event information will be stored for these 1460 TFs
     
     all_symbol <- intersect(all_symbolx, back_symbols)
@@ -338,14 +338,14 @@ for(k in 1:length(all_cancer)){
     tid <- unlist(lapply(strsplit(unlist(lapply(strsplit(basename(all_filesx), '[_]'),'[[',1)), '[.]'),'[[',1))
     eid <- tf_ensemb_map[which(tf_ensemb_map$Uniprotswissprot %in% tid),]$Ensembl_gene_id
     back_symbols <- tfs[which(tfs$Ensembl_Gene_ID %in% eid), ]$Gene_Symbol 
-    ## Out of 1639 curated TFs, 1460 are also present in the exon mapping file
-    ### So, the splice event information will be stored for these 1460 TFs
+    ## Out of 1639 curated TFs, 1469 are also present in the exon mapping file
+    ### So, the splice event information will be stored for these 1469 TFs
     
     all_symbol <- intersect(all_symbolx, back_symbols)
     rest_symbols <- setdiff(back_symbols, all_symbol)
 
     if(length(all_symbol) != 0){
-        for(j in 1:length(all_symbol)){ ## for k=1, you can check for j=6 and i=2
+        for(j in 1:length(all_symbol)){ ## for k=1, you can check for j=? and i=?
 
             tempz1 <- tempz[tempz$symbol == all_symbol[j], ]
 
@@ -433,14 +433,14 @@ for(k in 1:length(all_cancer)){
     tid <- unlist(lapply(strsplit(unlist(lapply(strsplit(basename(all_filesx), '[_]'),'[[',1)), '[.]'),'[[',1))
     eid <- tf_ensemb_map[which(tf_ensemb_map$Uniprotswissprot %in% tid),]$Ensembl_gene_id
     back_symbols <- tfs[which(tfs$Ensembl_Gene_ID %in% eid), ]$Gene_Symbol 
-    ## Out of 1639 curated TFs, 1460 are also present in the exon mapping file
-    ### So, the splice event information will be stored for these 1460 TFs
+    ## Out of 1639 curated TFs, 1469 are also present in the exon mapping file
+    ### So, the splice event information will be stored for these 1469 TFs
     
     all_symbol <- intersect(all_symbolx, back_symbols)
     rest_symbols <- setdiff(back_symbols, all_symbol)
 
     if(length(all_symbol) != 0){
-        for(j in 1:length(all_symbol)){ ## for k=1, you can check for j=6 and i=2
+        for(j in 1:length(all_symbol)){ ## for k=1, you can check for j=/ and i=/
 
             tempz1 <- tempz[tempz$symbol == all_symbol[j], ]
 
@@ -529,14 +529,14 @@ for(k in 1:length(all_cancer)){
     tid <- unlist(lapply(strsplit(unlist(lapply(strsplit(basename(all_filesx), '[_]'),'[[',1)), '[.]'),'[[',1))
     eid <- tf_ensemb_map[which(tf_ensemb_map$Uniprotswissprot %in% tid),]$Ensembl_gene_id
     back_symbols <- tfs[which(tfs$Ensembl_Gene_ID %in% eid), ]$Gene_Symbol 
-    ## Out of 1639 curated TFs, 1460 are also present in the exon mapping file
-    ### So, the splice event information will be stored for these 1460 TFs
+    ## Out of 1639 curated TFs, 1469 are also present in the exon mapping file
+    ### So, the splice event information will be stored for these 1469 TFs
     
     all_symbol <- intersect(all_symbolx, back_symbols)
     rest_symbols <- setdiff(back_symbols, all_symbol)
 
     if(length(all_symbol) != 0){
-        for(j in 1:length(all_symbol)){ ## for k=1, you can check for j=6 and i=2
+        for(j in 1:length(all_symbol)){ ## for k=1, you can check for j=? and i=?
 
             tempz1 <- tempz[tempz$symbol == all_symbol[j], ]
 

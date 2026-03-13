@@ -1,16 +1,8 @@
 ##############################################################################################
-# Purpose: Plots to see 
-# - The numebr of EVENTS significantly different between normal and cancer tissues
-# - Types of AS events in different cancer types
-# - Number of AS events affecting TFs 
-# - Types of AS events affecting TFs
-##############################################################################################
-
 rm(list=ls())
 
 library(data.table)
 library(ggplot2)
-library(TCGAbiolinks)
 library(GenomicDataCommons)
 library(pheatmap)
 library(dplyr)
@@ -22,11 +14,7 @@ if(dir.exists(save_dir)){
 }
 dir.create(save_dir, recursive=TRUE)
 
-##-- TCGA BRCA subtypes info -------------
-brca_subtype <-  as.data.frame(TCGAbiolinks::TCGAquery_subtype(tumor = "brca"))
-brca_subtype <- brca_subtype[,c(1,12)]
-
-###---------------------------------------
+# ###---------------------------------------
 
 ## TFs -------------------
 tfs <- data.table::fread('data/filtered_TFs_curated.txt', sep='\t')
@@ -36,7 +24,7 @@ paired_sam <- data.table::fread('data/cancer_paired_samples.txt')
 input_dir <- 'data/PSI_data'
 fdr <- 0.05
 # num_sams <- 0.5
-all_files <- gtools::mixedsort(list.files(input_dir, pattern='*filtered_PSI_paired.txt', full.names=TRUE))
+all_files <- gtools::mixedsort(list.files(input_dir, pattern='*PSI_paired.txt', full.names=TRUE))
 all_files_raw <- gtools::mixedsort(list.files(input_dir, pattern='^PSI_download', full.names=TRUE))
 all_cancer <- substr(basename(all_files), 1,4)
 
@@ -57,7 +45,26 @@ num_sig_events_tfs <- list()
 num_all_events <- list()
 num_all_events_tfs <- list()
 
-wb1 <- openxlsx::createWorkbook(paste0(save_dir,'/Supplementary_file_S1.xlsx'))
+wb1 <- openxlsx::createWorkbook(paste0(save_dir,'/Supplementary_Table_S1.xlsx'))
+##--- column name explanations --
+tdatat <- data.frame(`Table fields explanation`=c('SYMBOL: HGNC gene symbol',
+   'AS_ID: Alternative splicing ID provided by TCGA SpliceSeq',
+   'P_VALUE: wilcoxon signed-rank test p-value for comparison of PSI values of the concerned 
+   splicing event in paired samples of the concerned cancer type',
+   'FDR: Benjamini Hochberg correction of the P_VALUES for all splicing events tested',
+   'MEDIAN_DIFF: Median of the differences of PSI values between paired normal and cancer samples',
+     'MEDIAN_NORMAL: Median of the PSI values of normal samples',
+     'MEDIAN_CANCER: Median of the PSI values of cancer samples',
+    'MEAN_DIFF: Mean of the differences of PSI values between paired normal and cancer samples',
+     'MEAN_NORMAL: Mean of the PSI values of normal samples',
+     'MEAN_CANCER: Mean of the PSI values of cancer samples', 
+     'CANCER_HIGH: Number of cancer samples in which the concerned splicing event has a higher PSI value than in normal samples',
+     'NORMAL_HIGH: Number of normal samples in which the concerned splicing event has a higher PSI value than in cancer samples',
+     'PAIRED_SAMPLES: Total number of paired samples of the concerned cancer type'
+     ))
+openxlsx::addWorksheet(wb1, sheetName = 'INDEX')
+openxlsx::writeData(wb1, sheet = 'INDEX', tdatat)
+openxlsx::saveWorkbook(wb1, paste0(save_dir,'/Supplementary_Table_S1.xlsx'), overwrite = T)
 
 for(k in 1:length(all_cancer)){
 
@@ -90,7 +97,7 @@ for(k in 1:length(all_cancer)){
     'MEAN_CANCER', 'CANCER_HIGH', 'NORMAL_HIGH', 'PAIRED_SAMPLES' )
     openxlsx::addWorksheet(wb1, sheetName = all_cancer[k])
     openxlsx::writeData(wb1, sheet = all_cancer[k], tdatat)
-    openxlsx::saveWorkbook(wb1, paste0(save_dir,'/Supplementary_file_S1.xlsx'), overwrite = T)
+    openxlsx::saveWorkbook(wb1, paste0(save_dir,'/Supplementary_Table_S1.xlsx'), overwrite = T)
 
     events_tf[[k]] <- unique(tempy$as_id)
     
@@ -112,7 +119,7 @@ for(k in 1:length(all_cancer)){
 }
 
 ##--- plot the number of splicing events affecting TFs -----------------
-pdatae <- data.frame(cancer=all_cancer, count1=lengths(events_tf), count2=lengths(num_tfs))
+pdatae <- data.frame(cancer=all_cancer, count1=lengths(events_tf), count2=lengths(num_tfs))#, count3=lengths(num_sig_events))
 maxv <- max(pdatae$count1)
 colnames(pdatae) <- c('Cancer','PTSE','TF')
 pdata <- reshape2::melt(pdatae)
@@ -120,18 +127,19 @@ pdata[pdata == 0] <- NA
 p <- ggplot(pdata, aes(Cancer, value, fill=variable)) + 
 geom_bar(stat="identity",position="dodge")
 basesize <- 8
-p <- p + theme_bw(base_size = basesize) +
+p <- p + theme_classic(base_size = basesize) +
 scale_x_discrete(name="Cancer type") + 
 scale_y_continuous(name="# of PTSEs or TFs", limits=c(0,maxv+100)) +
 # geom_text(aes(label=count), position=position_dodge(width=0.9),hjust=0, vjust=0, angle=75, size=3)+
-scale_fill_manual(values=c('#d95f02','#1b9e77'))+
+scale_fill_manual("Entity",values=c('#d95f02','#1b9e77'))+
+# scale_pattern_manual("Entity",values = c("crosshatch", "stripe"))+
 geom_text(aes(label=value), position=position_dodge(width=0.9),hjust=0, vjust=0.5, angle=85, size=3)+
 theme(axis.text.x = element_text(size = basesize, angle = 60, hjust = 0.5,vjust=0.5, colour = "black"),
 axis.text.y = element_text(size = basesize, angle = 0, hjust = 0.5,vjust=0.5, colour = "black"), 
 panel.grid.major = element_blank(),panel.grid.minor = element_blank(),
-strip.text = element_text(size = basesize), axis.title=element_text(size=basesize), legend.position=c(0.85,0.82))+
+strip.text = element_text(size = basesize), axis.title=element_text(size=basesize), legend.position=c(0.85,0.86))+
 guides(fill=guide_legend(title="Entity",ncol=1))
-ggsave(p,filename=paste0(save_dir,"/Sig_events_TFs.png"),width=3.5, height=3, dpi=400)
+ggsave(p,filename=paste0(save_dir,"/Sig_events_TFs.png"),width=3.5, height=2.8, dpi=500)
 
 # ##------------------------------------------------------------------------------
 
@@ -148,20 +156,83 @@ xlab("Cancer type")+ylab("% of PTSEs")+
 scale_fill_manual(labels=c("A" = "Alternate Acceptor", 
     "B"="Alternate Donor", "C"="Alternate Promoter","D"="Alternate Terminator","E"="Exon skip","F"="Mutually Exclusive Exons", "G"="Retained Intron"), 
 values=c('#1b9e77','#d95f02','#7570b3','#e7298a','#66a61e','#e6ab02','#a6761d'))+
-theme_bw()+theme(axis.text.x = element_text(size = 1*basesize, angle = 60, vjust=1, hjust=1, colour = "black"),
+theme_classic()+theme(axis.text.x = element_text(size = 1*basesize, angle = 60, vjust=1, hjust=1, colour = "black"),
     axis.text.y = element_text(size = 1*basesize, angle = 0, colour = "black"),
     panel.grid.major = element_blank(),panel.grid.minor = element_blank(),
     axis.line = element_line(colour = "black"), legend.position="bottom",axis.title=element_text(size=basesize),
-    legend.text=element_text(size=basesize), legend.title=element_text(size=basesize))+
-guides(fill=guide_legend(title="Type of\nalternative\nsplicing event", ncol=1, override.aes = list(size = 1)))
-ggsave(ppx,filename=paste0(save_dir, "/Sig_events_types_TFs.png"),width=3, height=4, dpi=600)
+    legend.text=element_text(size=basesize), legend.title=element_text(size=basesize), legend.key.height= unit(0.25, 'cm'),
+    legend.key.width= unit(0.25, 'cm'))+
+guides(fill=guide_legend(title="Type of\nalternative\nsplicing event", ncol=1))
+ggsave(ppx,filename=paste0(save_dir, "/Sig_events_types_TFs.png"),width=3, height=3.2, dpi=600)
+
+
+# ###------------------------- Correlation with number of mutated splicing factors with a mutation rate of atleast 1% -----
+# ## Splicing factor mutation rate data from this study (Table S1): Somatic Mutational Landscape of Splicing Factor Genes and Their Functional Consequences across 33 Cancer Types ----
+# tmas <- as.data.frame(readxl::read_excel('data/1-s2.0-S2211124718301529-mmc2.xlsx', 1))
+# tmas1 <- tmas[413:length(tmas[[1]]), c(1,2,3,8,9)]
+# colnames(tmas1) <- c('CANCER', 'GENE', 'MRATE', 'HS', 'LOF')
+# tmas2 <- tmas1[tmas1$CANCER %in% all_cancer, ]
+# tmas2[is.na(tmas2)] <- 0
+
+# frac1 <- seq(0,50,5)
+# frac2 <- seq(0,10,1)
+
+# cor_lof <- c()
+# cor_hs <- c()
+# cor_mr <- c()
+
+# for(j in 1:length(frac1)){
+#     mcount_lof <- c()
+#     mcount_hs <- c()
+#     mcount_mr <- c()
+#     for(k in 1:length(all_cancer)){
+#         temp <- tmas2[tmas2$CANCER == all_cancer[k], ]
+#         tempx <- temp[temp$LOF >= frac1[j], ]
+#         mcount_lof <- c(mcount_lof, length(tempx[[1]]))
+#         tempx <- temp[temp$HS >= frac1[j], ]
+#         mcount_hs <- c(mcount_hs, length(tempx[[1]]))
+#         tempx <- temp[temp$MRATE >= frac2[j], ]
+#         mcount_mr <- c(mcount_mr, length(tempx[[1]]))
+#     }
+
+#     ##- correlation--
+#     coral <- cor.test(x=lengths(num_sig_events), y=mcount_lof, method = 'spearman')
+#     cor_lof <- c(cor_lof, coral$estimate[[1]])
+
+#     coral <- cor.test(x=lengths(num_sig_events), y=mcount_hs, method = 'spearman')
+#     cor_hs <- c(cor_hs, coral$estimate[[1]])
+
+#     coral <- cor.test(x=lengths(num_sig_events), y=mcount_mr, method = 'spearman')
+#     cor_mr <- c(cor_mr, coral$estimate[[1]])
+
+# }
+
+
+# ##--correlation plot --
+# coral <- cor.test(x=pdata$Control, y=pdata$Survival, method = 'spearman')
+# p <- ggplot(pdata, aes(Control, Survival, color=Cancer)) + 
+# geom_point(size=2)+
+# theme(legend.text=element_text(size=12))
+# basesize <- 12
+# p <- p + theme_bw(base_size = basesize * 0.8) +
+# scale_x_continuous(name="# of control edges") + 
+# scale_y_continuous(name="# of cancer relevant \nperturbed edges (CRPEs)") +
+# geom_text(aes(x=x1[ntype],y=y1[ntype], label=paste0('Spearman correlation: ',signif(coral$estimate[[1]],3),'\np-value: ',signif(coral$p.value,3))), size=2.5,color='black',show.legend = FALSE)+
+# scale_color_manual(values=c('#a6cee3','#1f78b4','#b2df8a','#33a02c','#fb9a99','#ffff99','#fdbf6f','#ff7f00','#cab2d6','#6a3d9a','#e31a1c','#b15928','black','#9e0142','#053061'))+
+# theme(axis.text.x = element_text(size = basesize * 0.6, angle = 60, hjust = 0.5,vjust=0.5, colour = "black"),
+# axis.text.y = element_text(size = basesize * 0.6, angle = 0, hjust = 0.5,vjust=0.5, colour = "black"), 
+# strip.text = element_text(size = basesize * 0.8), axis.title=element_text(basesize * 0.8))+
+# guides(color=guide_legend(title="Cancer type",ncol=3))
+# ggsave(p,filename=paste0(save_dir,"/",net_type[ntype],"_correlation_control.png"),width=4.8, height=2.5, dpi=400)
+
+
 
 
 ###----- UMAP/TSNE ------------------------------------------------------------------------------------
 casidx <- tumap[[1]]
 for(k in 2:length(all_cancer)){
     casidx <- intersect(casidx, tumap[[k]])
-}
+} ## casidx contains TFs present in each cancer
 
 alltfe <- events_tf[[1]]
 for(k in 2:length(all_cancer)){
@@ -205,51 +276,21 @@ umap_reduction_df_c <- umap_reduction_df[umap_reduction_df$Sample == 'Cancer',]
 p <- ggplot(umap_reduction_df_c, aes(V1, V2, color=Cancer)) + 
 geom_point(alpha=0.75, size=0.5)+
 theme(legend.text=element_text(size=8))
-basesize <- 10
-p <- p + theme_bw(base_size = basesize) +
+basesize <- 8
+p <- p + theme_classic(base_size = basesize) +
 scale_x_continuous(name="tSNE dimension 1") + 
 scale_y_continuous(name="tSNE dimension 2") +
 scale_color_manual(values=c('#a6cee3','#1f78b4','#b2df8a','#33a02c','#fb9a99','#ffff99',
     '#fdbf6f','#ff7f00','#cab2d6','#6a3d9a','#e31a1c','#b15928','black','#9e0142','#053061'))+
 # geom_text(aes(label=count), position=position_dodge(width=0.9),hjust=0, vjust=0, angle=75, size=3)+
 # geom_text(aes(label=value), position=position_stack(vjust=0.5), size=3)+
-theme(axis.text.x = element_text(size = basesize*1.6, angle = 60, hjust = 0.5,vjust=0.5, colour = "black"),
-axis.text.y = element_text(size = basesize*1.6, angle = 0, hjust = 0.5,vjust=0.5, colour = "black"), 
+theme(axis.text.x = element_text(size = basesize*1, angle = 60, hjust = 0.5,vjust=0.5, colour = "black"),
+axis.text.y = element_text(size = basesize*1, angle = 0, hjust = 0.5,vjust=0.5, colour = "black"), 
 panel.grid.major = element_blank(),panel.grid.minor = element_blank(),
-strip.text = element_text(size = basesize*1.6), axis.title=element_text(size=basesize*1.6), legend.position="bottom", 
-legend.text=element_text(size=basesize*1.3), legend.title=element_text(size=basesize*1.3))+
-guides(color=guide_legend(title="Cancer\ntype", ncol=4, override.aes = list(size = 3)))
-ggsave(p,filename=paste0(save_dir,"/tSNE.png"),width=5, height=6, dpi=500)
-
-##---- BRCA subtype --------------------------------------------
-samb <- intersect(rownames(tounmap), gsub('-','_',brca_subtype[[1]]))
-whs <- which(rownames(tounmap) %in% samb)
-tounmap_brca <- rownames(tounmap)[whs]
-umap_reduction_brca <- umap_reduction_df_c[whs, ]
-temp_sub <- rep(0,length(samb))
-for(k in 1:length(samb)){
-    wh1 <- which(tounmap_brca == samb[k])
-    temp_sub[wh1] <- brca_subtype[[2]][which(gsub('-','_',brca_subtype[[1]]) == samb[k])]
-}
-
-umap_reduction_brca$BRCA <- temp_sub
-p <- ggplot(umap_reduction_brca, aes(V1, V2, color=BRCA)) + 
-geom_point(alpha=0.75, size=1)+
-theme(legend.text=element_text(size=8))
-basesize <- 10
-p <- p + theme_bw(base_size = basesize) +
-scale_x_continuous(name="tSNE dimension 1") + 
-scale_y_continuous(name="tSNE dimension 2") +
-scale_color_manual(values=c('#e41a1c','#377eb8','#000000','#984ea3','#ff7f00'))+
-# geom_text(aes(label=count), position=position_dodge(width=0.9),hjust=0, vjust=0, angle=75, size=3)+
-# geom_text(aes(label=value), position=position_stack(vjust=0.5), size=3)+
-theme(axis.text.x = element_text(size = basesize*1.6, angle = 60, hjust = 0.5,vjust=0.5, colour = "black"),
-axis.text.y = element_text(size = basesize*1.6, angle = 0, hjust = 0.5,vjust=0.5, colour = "black"), 
-panel.grid.major = element_blank(),panel.grid.minor = element_blank(),
-strip.text = element_text(size = basesize*1.6), axis.title=element_text(size=basesize*1.6), legend.position="bottom", 
-legend.text=element_text(size=basesize*1.3), legend.title=element_text(size=basesize*1.3))+
-guides(color=guide_legend(title="BRCA\nsubtype", ncol=4, override.aes = list(size = 3)))
-ggsave(p,filename=paste0(save_dir,"/BRCA_tSNE.png"),width=5, height=6, dpi=500)
+strip.text = element_text(size = basesize*1), axis.title=element_text(size=basesize*1), legend.position="right", 
+legend.text=element_text(size=basesize*1), legend.title=element_text(size=basesize*1))+
+guides(color=guide_legend(title="Cancer type", ncol=2, override.aes = list(size = 3)))
+ggsave(p,filename=paste0(save_dir,"/tSNE.png"),width=3.5, height=3.2, dpi=500)
 
 
 ###------ Distribution of perturbation values ----------------------------------------------------
@@ -277,7 +318,7 @@ for(k in 1:length(all_cancer)){
         tpos <- c(tpos, tempy$POSP)
         tneg <- c(tneg, tempy$NEGP)
         tcancer <- c(tcancer, rep(all_cancer[k],length(tempy[[1]])))
-        tdiff <- c(tdiff, tempy$MEAN_DIFF)
+        tdiff <- c(tdiff, tempy$MEAN_DIFF) ## MEAN_DIFF is mean ofthe paired normal and cancer differences
         tempn <- paste0(tempy$symbol,'_',tempy$as_id,'_',tempy$splice_type)
         asid <- c(asid, tempn)
 
@@ -287,7 +328,7 @@ for(k in 1:length(all_cancer)){
 
 pdata <- data.frame(CANCER=tcancer, High=tpos, Low=tneg, impact=tdiff, ASID=asid)
 
-##--- choose the max of # of patients in which an event is gained or lost ----
+##--- choose the max of the # of patients in which an event is gained or lost ----
 flag <- c()
 maxp <- c()
 for(k in 1:length(pdata[[1]])){
@@ -303,23 +344,8 @@ for(k in 1:length(pdata[[1]])){
 pdata$MAXP <- maxp
 pdata$FLAG <- flag
 
-p <- ggplot(pdata, aes(MAXP, impact, color=CANCER)) + 
-geom_point(alpha=0.6)+geom_density_2d(colour='white', size=0.2)+
-theme(legend.text=element_text(size=12))
-basesize <- 8
-p <- p + theme_bw(base_size = basesize) +
-scale_y_continuous(name="Mean \u0394PSI (cancer - normal) \nof paired samples", limits = c(-1, 1), breaks = seq(-1, 1, by = 0.2)) + 
-scale_x_continuous(name="# of patients in a cancer type", limits = c(0, 1), breaks = seq(0, 1, by = 0.2)) +
-theme(axis.text.x = element_text(size = basesize, angle = 60, hjust = 0.5,vjust=0.5, colour = "black"),
-axis.text.y = element_text(size = basesize , angle = 0, hjust = 0.5,vjust=0.5, colour = "black"), 
-panel.grid.major = element_blank(),panel.grid.minor = element_blank(),
-strip.text = element_text(size = basesize ), axis.title=element_text(size=basesize))+
-scale_color_manual(values=c('#a6cee3','#1f78b4','#b2df8a','#fb9a99','#ffff99',
-    '#fdbf6f','#ff7f00','#cab2d6','#6a3d9a','#e31a1c','#b15928','black','#9e0142','#053061'))+
-guides(color=guide_legend(title="Cancer type",ncol=2, override.aes = list(size=2)))
-ggsave(p,filename=paste0(save_dir,"/Perturbed_events_patients.png"),width=5, height=3.5, dpi=600)
 
-
+## compute mean of max # of patients across as events in a cancer type
 mdns <- c()
 mxp <- c()
 all_cancerx <- all_cancer[-4]
@@ -337,18 +363,18 @@ geom_jitter(aes(color=cancer),size=0.3)+
 geom_violin(outlier.shape = NA)+
 theme(legend.text=element_text(size=12))
 basesize <- 8
-p <- p + theme_bw(base_size = basesize) +
+p <- p + theme_classic(base_size = basesize) +
 scale_x_discrete(name="Cancer type") + 
 scale_y_continuous(name="Mean \u0394PSI", limits=c(-1,1.2)) +
-geom_text(data=pmdn, aes(y=pos, x=CANCER,label=count), position=position_dodge(width=0.9),hjust=0.5, vjust=0.5, angle=60, size=2.5)+
+geom_text(data=pmdn, aes(y=pos, x=CANCER,label=count), position=position_dodge(width=0.9),hjust=0.5, vjust=0.5, angle=60, size=2.4)+
 scale_color_manual(values=c('#a6cee3','#1f78b4','#b2df8a','#fb9a99','#ffff99',
     '#fdbf6f','#ff7f00','#cab2d6','#6a3d9a','#e31a1c','#b15928','black','#9e0142','#053061'))+
 theme(axis.text.x = element_text(size = basesize, angle = 60, hjust = 0.5,vjust=0.5, colour = "black"),
 axis.text.y = element_text(size = basesize, angle = 0, hjust = 0.5,vjust=0.5, colour = "black"), 
 panel.grid.major = element_blank(),panel.grid.minor = element_blank(),
-strip.text = element_text(size = basesize), axis.title=element_text(size=basesize*1.25))+
+strip.text = element_text(size = basesize), axis.title=element_text(size=basesize*1))+
 guides(color='none')
-ggsave(p,filename=paste0(save_dir,"/Sig_events_TFs_dist.png"),width=3.5, height=2.5, dpi=400)
+ggsave(p,filename=paste0(save_dir,"/Sig_events_TFs_dist.png"),width=3, height=2.8, dpi=500)
 
 
 ##-------- Pairwise overlap of slicing events affecting TFs across cancer types ----------------------------------------
@@ -409,22 +435,24 @@ pdata <- data.frame(cancer=as.factor(seq(1,length(all_cancer))), count=num_event
 p <- ggplot(pdata, aes(cancer, count)) + 
 geom_bar(stat="identity",position=position_dodge())+
 theme(legend.text=element_text(size=12))
-basesize <- 12
+basesize <- 8
 maxv <- max(pdata$count)
-p <- p + theme_bw(base_size = basesize) +
+p <- p + theme_classic(base_size = basesize) +
 scale_x_discrete(name="Least # of cancer types") + 
 scale_y_continuous(name="# of PTSEs", limits=c(0,maxv+300)) +
-geom_text(aes(label=count), position=position_dodge(width=0.9),hjust=0, vjust=0, angle=75, size=4)+
+geom_text(aes(label=count), position=position_dodge(width=0.9),hjust=0, vjust=0, angle=75, size=3)+
 theme(axis.text.x = element_text(size = basesize, angle = 60, hjust = 0.5,vjust=0.5, colour = "black"),
 axis.text.y = element_text(size = basesize, angle = 0, hjust = 0.5,vjust=0.5, colour = "black"),
 panel.grid.major = element_blank(),panel.grid.minor = element_blank(), 
 strip.text = element_text(size = basesize), axis.title=element_text(size=basesize))+
 guides(fill=guide_legend(title="Percent Spliced In",ncol=1))#guides(fill='none')
-ggsave(p,filename=paste0(save_dir,"/Events_perturbing_overlap.png"),width=3.5, height=3, dpi=300)
+ggsave(p,filename=paste0(save_dir,"/Events_perturbing_overlap.png"),width=3, height=3, dpi=500)
 
 
 ##--- save excel file -----
 tunn <- list()
+tunnx <- list()
+
 for(k in 1:length(num_events_combs[[1]])){
     temp_unn <- c()
     for(j in 1:length(all_cancer)){
@@ -433,15 +461,26 @@ for(k in 1:length(num_events_combs[[1]])){
         }
     }
     tunn[[k]] <- paste(temp_unn, collapse=';')
+    tunnx[[k]] <- temp_unn
+
 }
 
-wb1 <- openxlsx::createWorkbook(paste0(save_dir,'/Supplementary_file_S2.xlsx'))
+wb1 <- openxlsx::createWorkbook(paste0(save_dir,'/Supplementary_Table_S2.xlsx'))
+##--- column name explanations --
+tdatat <- data.frame(`Table fields explanation`=c(
+   'AS_ID: Alternative splicing ID provided by TCGA SpliceSeq',
+     'CANCER_TYPES: Types of cancer (denoted as TCGA cancer codes) in which the considered splicing event in significantly perturbed'
+     ))
+openxlsx::addWorksheet(wb1, sheetName = 'INDEX')
+openxlsx::writeData(wb1, sheet = 'INDEX', tdatat)
+openxlsx::saveWorkbook(wb1, paste0(save_dir,'/Supplementary_Table_S2.xlsx'), overwrite = T)
 
-tdatax <- data.frame(AS_ID=num_events_combs[[1]], CANCER_TYPE=unlist(tunn))
+tdatax <- data.frame(AS_ID=num_events_combs[[1]], CANCER_TYPES=unlist(tunn), len=lengths(tunnx))
+tdatay <- tdatax[order(-tdatax$len), ]
+tdatay <- tdatay[,-3]
 openxlsx::addWorksheet(wb1, sheetName = 'PTSE-cancer combinations')
-openxlsx::writeData(wb1, sheet = 'PTSE-cancer combinations', tdatax)
-# openxlsx::writeData(wb1, tdatax)
-openxlsx::saveWorkbook(wb1, paste0(save_dir,'/Supplementary_file_S2.xlsx'), overwrite = T)
+openxlsx::writeData(wb1, sheet = 'PTSE-cancer combinations', tdatay)
+openxlsx::saveWorkbook(wb1, paste0(save_dir,'/Supplementary_Table_S2.xlsx'), overwrite = T)
 
 
 ##----- PSI profile of the pancancer (at least 10 cancer types) events -------------
@@ -473,7 +512,7 @@ for(k in 1:length(pdata[[1]])){
 pdx <- t(as.matrix(pdata_mat))#as.matrix(pdata_mat)#
 
 p <- pheatmap(pdx,fontsize=3, cluster_rows=FALSE, cluster_cols=FALSE,cellheight=5, cellwidth = 5)
-ggsave(p,filename=paste0(save_dir, "/Pancancer_events.png"),width=5, height=7, dpi=600)
+ggsave(p,filename=paste0(save_dir, "/Pancancer_events.png"),width=3.4, height=2, dpi=600)
 
 saveRDS(num_events_combs, file = "data/overlapping_events.rds")
 
@@ -557,7 +596,7 @@ p <- ggplot(pdatax, aes(cancer, value, fill=variable)) +
 geom_bar(stat="identity",position="stack")+
 theme(legend.text=element_text(size=12))
 basesize <- 8
-p <- p + theme_bw(base_size = basesize) +
+p <- p + theme_classic(base_size = basesize) +
 scale_x_discrete(name="Cancer type") + 
 scale_y_continuous(name="# of PTSEs", limits=c(0,max(pdata$count))) +
 # geom_text(aes(label=count), position=position_dodge(width=0.9),hjust=0, vjust=0, angle=75, size=3)+
@@ -565,13 +604,23 @@ geom_text(aes(x=cancer, y=vax, label=value), position=position_stack(vjust=1), s
 theme(axis.text.x = element_text(size = basesize, angle = 60, hjust = 0.5,vjust=0.5, colour = "black"),
 axis.text.y = element_text(size = basesize, angle = 0, hjust = 0.5,vjust=0.5, colour = "black"),
 panel.grid.major = element_blank(),panel.grid.minor = element_blank(),  
-strip.text = element_text(size = basesize), axis.title=element_text(size=basesize))+
-guides(fill=guide_legend(title="Survival\nassociated",ncol=1))
-ggsave(p,filename=paste0(save_dir,"/Sig_events_unique.png"),width=4, height=2.5, dpi=500)
+strip.text = element_text(size = basesize), axis.title=element_text(size=basesize), legend.position=c(0.8,0.86))+
+guides(fill=guide_legend(title="Survival associated",ncol=2))
+ggsave(p,filename=paste0(save_dir,"/Sig_events_unique.png"),width=3.5, height=2.5, dpi=500)
 
 
 ##--- save excel file ---
-wb1 <- openxlsx::createWorkbook(paste0(save_dir,'/Supplementary_file_S3.xlsx'))
+wb1 <- openxlsx::createWorkbook(paste0(save_dir,'/Supplementary_Table_S3.xlsx'))
+##--- column name explanations --
+tdatat <- data.frame(`Table fields explanation`=c(
+   'AS_ID: Alternative splicing ID provided by TCGA SpliceSeq',
+     'CI_Type: Type of clinical indicator',
+     'Hazard_Ratio: Hazard ratio with respect to the considered clinical indicator'
+     ))
+openxlsx::addWorksheet(wb1, sheetName = 'INDEX')
+openxlsx::writeData(wb1, sheet = 'INDEX', tdatat)
+openxlsx::saveWorkbook(wb1, paste0(save_dir,'/Supplementary_Table_S3.xlsx'), overwrite = T)
+
 
 for(k in 1:length(all_cancer)){
 
@@ -591,38 +640,8 @@ for(k in 1:length(all_cancer)){
     tdatax <- data.frame(AS_ID=num_events_unq[[k]], CI_Type=citype, Hazard_Ratio=surv)
     openxlsx::addWorksheet(wb1, sheetName = all_cancer[k])
     openxlsx::writeData(wb1, sheet = all_cancer[k], tdatax)
-    openxlsx::saveWorkbook(wb1, paste0(save_dir,'/Supplementary_file_S3.xlsx'), overwrite = T)
+    openxlsx::saveWorkbook(wb1, paste0(save_dir,'/Supplementary_Table_S3.xlsx'), overwrite = T)
 
 }
 
 
-##- TFs of the unique survival PTSEs -----
-tf_unique_surv <- list()
-for(k in 1:length(all_cancer)){
-
-    temp <- data.table::fread(all_files[k], sep='\t')
-    wha <- which(temp$FDR < fdr)
-    whb <- which(abs(temp$MEAN_NORMAL-temp$MEAN_CANCER) > fdr)
-    wh <- intersect(wha, whb)
-    tempx <- temp[wh, ]
-    whx <- which(toupper(tempx$symbol) %in% tfs$Gene_Symbol) ## number of AS events concerning TFs
-    tempy <- tempx[whx,]
-    tempz <- tempy[tempy$as_id %in% unq_events_surv[[k]], ]
-    tf_unique_surv[[k]] <- unique(tempz$symbol)
-
-}
-
-tf_unique_surv <- list()
-for(k in 1:length(all_cancer)){
-
-    temp <- data.table::fread(all_files[k], sep='\t')
-    wha <- which(temp$FDR < fdr)
-    whb <- which(abs(temp$MEAN_NORMAL-temp$MEAN_CANCER) > fdr)
-    wh <- intersect(wha, whb)
-    tempx <- temp[wh, ]
-    whx <- which(toupper(tempx$symbol) %in% tfs$Gene_Symbol) ## number of AS events concerning TFs
-    tempy <- tempx[whx,]
-    tempz <- tempy[tempy$as_id %in% num_events_unq[[k]], ]
-    tf_unique_surv[[k]] <- unique(tempz$symbol)
-}
-##------------------------------------------

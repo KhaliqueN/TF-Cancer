@@ -30,7 +30,7 @@ tfs <- data.table::fread('data/filtered_TFs_curated.txt', sep='\t')
 input_dir <- 'data/PSI_data'
 fdr <- 0.05
 sample_size <- 10
-all_files <- gtools::mixedsort(list.files(input_dir, pattern='*filtered_PSI_paired.txt', full.names=TRUE))
+all_files <- gtools::mixedsort(list.files(input_dir, pattern='*PSI_paired.txt', full.names=TRUE))
 all_files_raw <- gtools::mixedsort(list.files(input_dir, pattern='^PSI_download', full.names=TRUE))
 all_files <- all_files[-4]
 all_files_raw <- all_files_raw[-4]
