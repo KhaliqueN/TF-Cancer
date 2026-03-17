@@ -3,7 +3,6 @@
 ##############################################################################################
 
 rm(list=ls())
-
 library(data.table)
 library(ggplot2)
 library(GenomicDataCommons)
@@ -23,7 +22,7 @@ dir.create(save_dir, recursive=TRUE)
 psi_input <- 'data/PSI_data'
 as_input <- 'data/uniprot_Ensembl_Exon_map_DBD_ED_AS'
 
-fdr <- 0.05
+# fdr <- 0.05
 atleast_DBD <- 1 ## least number of DBD overlapping amino acids perturbed by a splicing event X to consider the DBD as perturbed by X
 tfs <- data.table::fread('data/filtered_TFs_curated.txt', sep='\t')
 tf_ensemb_map <- as.data.frame(data.table::fread('data/TF_ensembl_uniprot.txt', sep='\t'))
@@ -249,20 +248,6 @@ aa_purt <- data.frame(CANCER=tcancer, ASID=tevents, AA=taa, DBD=tdbd, GENE=tgene
 
 
 # ##--- transfer DBD names----
-# temp_dbd_map <- data.table::fread('../data/Prosite_DBD_map.txt')
-# mdbd <- c()
-# for(k in 1:length(aa_purt[[1]])){
-#     tempdd <- paste(setdiff(unique(temp_dbd_map[temp_dbd_map$DBD == aa_purt$DBD[k], ]$PROSITE),''),collapse=';')
-#     if(length(tempdd) > 1){break}
-#     mdbd <- c(mdbd, tempdd)
-# }
-
-# ##--------------------------
-# aa_purt$DBD <- unlist(substr(aa_purt$DBD,1,8))
-# aa_purtx <- unique(aa_purt[,c(2,3)])
-
-## check the lengths
-# yy = mapply(function(x,y) length(x) > length(y), TFs_with_affected_DBD_ES, ES_affecting_TFs_with_DBD)
 ##----------------------------------------------------------------------------
 ##--- which TFs have a DBD info ----
 counter <- 0
@@ -275,7 +260,7 @@ for(k in 1:length(all_files)){
 }
 ##----------------------------------
 
-##--------------------------------------------------------------------
+##-------------------------------------------------------------------
 
 ##--- Save all DBD perturbing events -----------------------------
 
@@ -305,16 +290,6 @@ corr4 <- c()
 counter <- 0
 tgenet <- c()
 tsplice <- c()
-
-wb1 <- openxlsx::createWorkbook(paste0(save_dir,'/Supplementary_Table_S4.xlsx'))
-##--- column name explanations --
-tdatat <- data.frame(`Table fields explanation`=c(
-   'AS_ID: Alternative splicing ID provided by TCGA SpliceSeq',
-   'DBD: DNA binding domain type affected by the concerned splicing event'
-     ))
-openxlsx::addWorksheet(wb1, sheetName = 'INDEX')
-openxlsx::writeData(wb1, sheet = 'INDEX', tdatat)
-openxlsx::saveWorkbook(wb1, paste0(save_dir,'/Supplementary_Table_S4.xlsx'), overwrite = T)
 
 for(k in 1:length(all_cancer)){
 
@@ -405,15 +380,6 @@ for(k in 1:length(all_cancer)){
 
     }
     
-    ## save excel sheet ----
-    # tdatat <- data.frame(GENE=tgene, AS_ID=asidt, DBD=odbdt, MEAN_CANCER=corr1t, MEAN_NORMAL=corr2t, MEAN_DIFF=corr3t, FDR=corr4t)
-    tdatat <- data.frame(AS_ID=asidt, DBD=odbdt)
-
-    tdatat <- tdatat[tdatat$DBD != 0, ]
-    # tdatat <- tdatat[order(abs(tdatat$MEAN_DIFF), decreasing=TRUE), ]
-    openxlsx::addWorksheet(wb1, sheetName = all_cancer[k])
-    openxlsx::writeData(wb1, sheet = all_cancer[k], tdatat)
-    openxlsx::saveWorkbook(wb1, paste0(save_dir,'/Supplementary_Table_S4.xlsx'), overwrite = T)
 }
 
 tdata <- data.frame(CANCER=tcancer, SYMBOL=tgenet, AS=asid, SPLICE_TYPE=tsplice, DBD=odbd, MEAN_CANCER=corr1, 
@@ -496,7 +462,7 @@ xlab("Cancer type")+ylab("% of PTSEs \naffecting DBDs")+
 scale_fill_manual(labels=c("A" = "Alternate Acceptor", 
     "B"="Alternate Donor", "C"="Alternate Promoter","D"="Alternate Terminator","E"="Exon skip","F"="Mutually Exclusive Exons", "G"="Retained Intron"), 
 values=c('#1b9e77','#d95f02','#7570b3','#e7298a','#66a61e','#e6ab02','#a6761d'))+
-theme_bw()+theme(axis.text.x = element_text(size = 1*basesize, angle = 60, vjust=1, hjust=1, colour = "black"),
+theme_classic()+theme(axis.text.x = element_text(size = 1*basesize, angle = 60, vjust=1, hjust=1, colour = "black"),
     axis.text.y = element_text(size = 1*basesize, angle = 0, colour = "black"),
     panel.grid.major = element_blank(),panel.grid.minor = element_blank(),
     axis.line = element_line(colour = "black"), legend.position="bottom",axis.title=element_text(size=basesize),
@@ -536,9 +502,42 @@ for(k in 1:length(all_cancer)){
 
 pdata <- data.frame(CANCER=tcancer, GENE=tgene, ASID=tas, SPLICE_TYPE=tsplice, DBD=tdbd, AA=taa, MEAN_DIFF=tdiff)
 
-pdata$ID <- paste0(pdata$GENE,'_',pdata$ASID,'_',pdata$SPLICE_TYPE,'\n','(',pdata$CANCER,', ',pdata$DBD,')')
+##--- save excel ----
+wb1 <- openxlsx::createWorkbook(paste0(save_dir,'/Supplementary_Table_S4.xlsx'))
+##--- column name explanations --
+tdatat <- data.frame(`Table fields explanation`=c(
+   'SYMBOL: HGNC gene symbol',
+   'AS_ID: Alternative splicing ID provided by TCGA SpliceSeq',
+   'AS_TYPE: Type of alternative splicing',
+   'DBD: Type of DNA binding domain of the corresponding transcription factor',
+   'AA_LOSS: Percentage of amino acids of the concerned DBD region that is affected by the corresponding splicing event'
+     ))
+openxlsx::addWorksheet(wb1, sheetName = 'INDEX')
+openxlsx::writeData(wb1, sheet = 'INDEX', tdatat)
+openxlsx::saveWorkbook(wb1, paste0(save_dir,'/Supplementary_Table_S4.xlsx'), overwrite = T)
 
-tolabel <- subset(pdata, abs(MEAN_DIFF) > 0.4)$ID
+for(k in 1:length(all_cancer)){
+
+    tempf <- pdata[pdata$CANCER == all_cancer[k], ][,seq(2,6)]
+    colnames(tempf) <- c('SYMBOL','AS_ID','AS_TYPE','DBD','AA_LOSS')
+    
+    ## save excel sheet ----
+    tdatat <- tempf
+
+    tdatat <- tdatat[tdatat$DBD != 0, ]
+    # tdatat <- tdatat[order(abs(tdatat$MEAN_DIFF), decreasing=TRUE), ]
+    openxlsx::addWorksheet(wb1, sheetName = all_cancer[k])
+    openxlsx::writeData(wb1, sheet = all_cancer[k], tdatat)
+    openxlsx::saveWorkbook(wb1, paste0(save_dir,'/Supplementary_Table_S4.xlsx'), overwrite = T)
+}
+
+##---------------------
+
+
+##--- plot -----
+
+pdata$ID <- paste0(pdata$GENE,'_',pdata$ASID,'_',pdata$SPLICE_TYPE,'\n','(',pdata$CANCER,', ',pdata$DBD,')')
+tolabel <- subset(pdata, abs(MEAN_DIFF) > 0.4 & AA == 100)$ID
 whl <- which(pdata$ID %in% tolabel)
 pdata$PL <- ""
 pdata$PL[whl] <- tolabel
@@ -560,14 +559,38 @@ geom_text_repel(family = "Poppins",
                       color='black',
                       arrow = arrow(length = unit(0.010, "npc")),
                       min.segment.length = 0) +
-theme_bw()+theme(axis.text.x = element_text(size = 1*basesize, angle = 60, vjust=1, hjust=1, colour = "black"),
+theme_classic()+theme(axis.text.x = element_text(size = 1*basesize, angle = 60, vjust=1, hjust=1, colour = "black"),
     axis.text.y = element_text(size = 1*basesize, angle = 0, colour = "black"),
     panel.grid.major = element_blank(),panel.grid.minor = element_blank(),
     axis.line = element_line(colour = "black"),axis.title=element_text(size=1*basesize),
     legend.text=element_text(size=basesize), legend.title=element_text(size=basesize),
     panel.border = element_blank())+
 guides(color=guide_legend(title="Cancer type", ncol=2))
-ggsave(p,filename=paste0(save_dir,"/AA_vs_meanDiff.png"),width=7, height=3, dpi=500)
+ggsave(p,filename=paste0(save_dir,"/AA_vs_meanDiff.png"),width=5.5, height=2.8, dpi=500)
+
+
+##--- distribution of number of events with DBD AA loss percentage -------------
+# pdata$bval <- cut(pdata$AA, breaks = seq(0,100,5), include.lowest=TRUE)
+pdatay <- unique(pdata[, c(2,3,4,5,6)])
+pdatay$bval <- cut(pdatay$AA, breaks = seq(0,100,5), include.lowest=TRUE)
+pdatax <- plyr::count(pdatay$bval)
+maxv <- max(pdatax$freq)
+p <- ggplot(pdatax, aes(x, freq)) + geom_bar(stat="identity",color='black')
+p <- p + theme_classic() +
+  scale_y_continuous(name="# of PTSEs", limits=c(0,maxv+20)) +
+  scale_x_discrete(name="% of DBD amino acids affected") +
+  geom_text(aes(label=freq), position=position_dodge(width=0.9),hjust=0, vjust=0.5, angle=85, size=2.4)+
+  theme(axis.text.x = element_text(size = basesize * 1,angle = 60, hjust = 1,vjust=1, colour = "black"), 
+                         axis.text.y = element_text(size = basesize * 1, colour='black'), 
+                         panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+        axis.title.x = element_text(size=basesize*1),axis.title.y = element_text(size=basesize*1), 
+        plot.title = element_text(size=basesize*1), strip.text.x = element_text(size = basesize * 1, colour = "black", angle = 0), 
+        strip.text.y = element_text(size = basesize * 1, colour = "black", angle = 0), legend.position="right", 
+        legend.text=element_text(size=basesize))+guides(fill='none')
+ggsave(p,filename=paste0(save_dir,'/AA_loss_distribution.png'),width=3, height=3, dpi=500)
+
+
+##------------------------------------------------------------------------------
 
 
 ##--- total number of events -----
@@ -593,12 +616,10 @@ wh <- which(pdata$freq < 5)
 pdata2 <- pdata[wh,]
 pdata1 <- pdata[-wh,]
 pdatax <- rbind(pdata1, data.frame(x=paste0('Others (',length(pdata2[[1]]),')'),freq=sum(pdata2$freq)))
-pdatax$x <- factor(pdatax$x, levels=pdatax$x)
+pdatax$x <- factor(pdatax$x, levels=pdatax$x) ## stores occurences of DBD types in the TFs
 
 ##--affected DBD per gene ---
 event_dbd_unq <- unique(dbd_purt_dt[, c(2,5)])
-# wh <- which(event_dbd_unq$DBD %like% 'NR C4-type')
-# event_dbd_unq$DBD[wh] <- 'Nuclear receptor'
 wh <- which(event_dbd_unq$DBD %like% ',')
 pdatamul <- event_dbd_unq[wh,]
 pdatauni <- event_dbd_unq[-wh,]
@@ -614,22 +635,7 @@ pdataq <- rbind(pdataq, data.frame(x=setdiff(pdata$x, pdataq$x), freq=0))
 pdata <- pdata[order(pdata$x),]
 pdataq <- pdataq[order(pdataq$x),]
 pdataq$frac <- pdataq$freq/pdata$freq
-pdataq <- pdataq[order(pdataq$frac), ]
-
-# p <- ggplot(pdatax, aes(x, freq)) + 
-# geom_bar(stat="identity",position=position_dodge())+
-# theme(legend.text=element_text(size=12))
-# basesize <- 12
-# p <- p + theme_bw(base_size = basesize * 0.8) +
-# scale_x_discrete(name="DNA binding domain") + 
-# scale_y_continuous(name="Frequency of occurence", limits=c(0,max(pdatax$freq)+40)) +
-# geom_text(aes(label=freq), position=position_dodge(width=0.9),hjust=0, vjust=0, angle=75, size=3)+
-# theme(axis.text.x = element_text(size = basesize * 0.6, angle = 60, hjust = 1,vjust=1, colour = "black"),
-# axis.text.y = element_text(size = basesize * 0.6, angle = 0, hjust = 0.5,vjust=0.5, colour = "black"), 
-# panel.grid.major = element_blank(),panel.grid.minor = element_blank(), 
-# strip.text = element_text(size = basesize * 0.8), axis.title=element_text(basesize * 0.8))+
-# guides(fill='none')
-# ggsave(p,filename=paste0(save_dir,"/DBDs_background.png"),width=7, height=4, dpi=400)
+pdataq <- pdataq[order(pdataq$frac), ] ## stores the DBD type frequencies affected by at least one splicing event
 
 
 ##--- Distribution of DBD positions --------------------------------------------------------------------
@@ -640,12 +646,6 @@ ids <- c()
 for(k in 1:length(all_files)){
     temp <- data.table::fread(all_files[k])
     tempdb <- setdiff(unique(temp$DBD),'-')
-    # if(length(tempdb) != 0){
-    #     wh <- which(tempdb == 'NR C4-type')
-    #     if(length(wh) != 0){
-    #         tempdb[wh] <- 'Nuclear receptor'
-    #     }
-    # }
     tempdb <- unique(tempdb)
 
     wh <- which(temp$DBD != '-')
@@ -688,19 +688,20 @@ cols <- c('#a6cee3','#1f78b4','#b2df8a','#33a02c','#fb9a99','#e31a1c','#fdbf6f',
     '#8dd3c7','#ffffb3','#bebada','#fb8072','#80b1d3','#fdb462','#b3de69','#fccde5','#d9d9d9','#bc80bd','#ccebc5','#ffed6f','#000000',
     '#ffffff','#636363','#bdbdbd')
 p <- ggplot(qqdata, aes(FLAG, freq, fill=x)) + geom_bar(stat="identity",position="stack",color='black')
-p <- p + theme_bw() +
+p <- p + theme_classic() +
   scale_y_continuous(name="# of amino acids") +
   scale_x_discrete(name="Relative sequence position bracket") +
   scale_fill_manual(values=cols)+
-  guides(fill=guide_legend(title="DNA binding domain type",ncol=2))+
+  # guides(fill=guide_legend(title="DNA binding domain type",ncol=2))+
   theme(axis.text.x = element_text(size = basesize * 1,angle = 60, hjust = 1,vjust=1, colour = "black"), 
                          axis.text.y = element_text(size = basesize * 1, colour='black'), 
                          panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
         axis.title.x = element_text(size=basesize*1),axis.title.y = element_text(size=basesize*1), 
         plot.title = element_text(size=basesize*1), strip.text.x = element_text(size = basesize * 1, colour = "black", angle = 0), 
-        strip.text.y = element_text(size = basesize * 1, colour = "black", angle = 0), legend.position="bottom", 
-        legend.text=element_text(size=10))+guides(fill='none')
-ggsave(p,filename=paste0(save_dir,'/DBD_distribution.png'),width=3.5, height=4, dpi=500)
+        strip.text.y = element_text(size = basesize * 1, colour = "black", angle = 0), legend.position="right", 
+        legend.text=element_text(size=basesize), legend.key.height= unit(0.25, 'cm'),
+    legend.key.width= unit(0.25, 'cm'))+guides(fill=guide_legend(title="DBD type",ncol=1))
+ggsave(p,filename=paste0(save_dir,'/DBD_distribution.png'),width=6, height=4, dpi=500)
 
 
 # ##-----------------------------------
@@ -709,8 +710,6 @@ ggsave(p,filename=paste0(save_dir,'/DBD_distribution.png'),width=3.5, height=4, 
 ##---------------------------------------------------------------------------------------
 ##-- unique event DBD pair --
 event_dbd_unq <- unique(dbd_purt_dt[, c(3,5)])
-# wh <- which(event_dbd_unq$DBD %like% 'NR C4-type')
-# event_dbd_unq$DBD[wh] <- 'Nuclear receptor'
 wh <- which(event_dbd_unq$DBD %like% ',')
 pdatamul <- event_dbd_unq[wh,]
 pdatauni <- event_dbd_unq[-wh,]
@@ -733,29 +732,11 @@ mdbd <- setdiff(pdatax$x, pdatauniy$Category)
 pdatauniy <- rbind(pdatauniy, data.frame(Category=mdbd, x=0))
 pdatauniy$Category <- factor(pdatauniy$Category, levels=pdatax$x)
 
-# p <- ggplot(pdatauniy, aes(Category, x)) + 
-# geom_bar(stat="identity",position=position_dodge())+
-# theme(legend.text=element_text(size=12))
-# basesize <- 12
-# p <- p + theme_bw(base_size = basesize * 0.8) +
-# scale_x_discrete(name="DNA binding domain") + 
-# scale_y_continuous(name="# of splicing events", limits=c(0,max(pdatauniy$x)+40)) +
-# geom_text(aes(label=x), position=position_dodge(width=0.9),hjust=0, vjust=0, angle=75, size=3)+
-# theme(axis.text.x = element_text(size = basesize * 0.6, angle = 60, hjust = 1,vjust=1, colour = "black"),
-# axis.text.y = element_text(size = basesize * 0.6, angle = 0, hjust = 0.5,vjust=0.5, colour = "black"), 
-# panel.grid.major = element_blank(),panel.grid.minor = element_blank(), 
-# strip.text = element_text(size = basesize * 0.8), axis.title=element_text(basesize * 0.8))+
-# guides(fill='none')
-# ggsave(p,filename=paste0(save_dir,"/DBDs_affected.png"),width=7, height=4, dpi=400)
-
-
 
 pdatagh <- data.frame(matrix(ncol=3, nrow=0))
 for(k in 1:length(all_cancer)){
 
     tempdbd <- unique(dbd_purt_dt[dbd_purt_dt$CANCER == all_cancer[k],][,c(3,5)])
-    # wh <- which(tempdbd$DBD %like% 'NR C4-type')
-    # if(length(wh) != 0){tempdbd$DBD[wh] <- 'Nuclear receptor'}
     wh <- which(tempdbd$DBD %like% ',')
     if(length(wh) != 0){
         pdatam <- tempdbd[wh,]
@@ -822,33 +803,30 @@ for(k in 1:length(all_cancerx)){
 }
 pdatat <- data.frame(CANCER=tcancer, DBD=tdbd, FRAC=tfrac)
 pdatat$bval <- ifelse(pdatat$FRAC < 10, pdatat$FRAC, '>=10')
-# pdatat$DBD <- factor(pdatat$DBD, levels=pdatax$x)
 
 pdatat$bval <- as.factor(pdatat$bval)
-pdatat$bval <- factor(pdatat$bval, levels = c( 0, 1, 2, 3, 4, 5, 6, 7, 8,'>=10'))
+pdatat$bval <- factor(pdatat$bval, levels = c( 0, 1, 2, 3, 4, 5, 6, 7, 8, 9,'>=10'))
 
-# cols <- c('#800026','#000000','#ffffff','#ffffcc','#ffeda0','#fed976','#feb24c','#fd8d3c','#fc4e2a','#e31a1c','#bd0026')
-cols <- c('#ffffff','#fff7bc','#fee391','#fec44f','#fe9929','#ec7014','#cc4c02','#993404','#662506','#000000')
-# c('#08306b', '#6baed6','#deebf7', '#ffffcc','#fed976','#fd8d3c','#e31a1c','#800026')#'#2171b5', 
-# cols <- rev(brewer.pal(11,"Spectral"))
-basesize <- 6
+cols <- c('#ffffff','#ffffcc','#fff7bc','#fee391','#fec44f','#fe9929','#ec7014','#cc4c02','#993404','#662506','#000000')
+basesize <- 8
 p <- ggplot(pdatat, aes(DBD, CANCER)) + geom_tile(aes(fill = bval), color='black')+scale_fill_manual(values=cols)
   # scale_fill_gradientn(colors=cols)
-p <- p + theme_grey(base_size = basesize) + labs(x = "Sample", y = "Gene") +
+p <- p + theme_classic(base_size = basesize) + labs(x = "Sample", y = "Gene") +
   scale_y_discrete(name="Cancer type") +
   scale_x_discrete(name="DNA binding domain") +
-  guides(fill=guide_legend(title="# of PTSEs", size=basesize, ncol=2, override.aes = list(size = 2)))+
+  guides(fill=guide_legend(title="# of PTSEs", ncol=1))+
   theme(axis.text.x = element_text(size = basesize * 1,angle = 60, hjust = 1,vjust=1, colour = "black"), 
                          axis.text.y = element_text(size = basesize * 1, colour='black'), 
                          panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
         axis.title.x = element_text(size=basesize*1),axis.title.y = element_text(size=basesize*1), 
         plot.title = element_text(size=basesize*1), strip.text.x = element_text(size = basesize * 1, colour = "black", angle = 0), 
         strip.text.y = element_text(size = basesize * 1, colour = "black", angle = 0), 
-        legend.text=element_text(size=basesize))
-ggsave(p,filename=paste0(save_dir,'/Perturbed_DBDs_tile.png'),width=4, height=3, dpi=500)
+        legend.text=element_text(size=basesize), legend.key.height= unit(0.25, 'cm'),
+    legend.key.width= unit(0.25, 'cm'))
+ggsave(p,filename=paste0(save_dir,'/Perturbed_DBDs_tile.png'),width=4.5, height=4, dpi=500)
 
 
-##--- hypergeometruc test for each DBD type ---------
+##--- hypergeometric test for each DBD type ---------
 
 bgsize <- sum(pdata$freq)
 temps <- pdataq[pdataq$freq > 0, ]#alldata[alldata$FLAG == 'PTSEs', ]
@@ -914,8 +892,8 @@ cols <- c('#a6cee3','#1f78b4','#b2df8a','#33a02c','#fb9a99','#e31a1c','#fdbf6f',
 p <- ggplot(alldata, aes(frac,FLAG,fill=x)) + 
 geom_bar(stat="identity",position='stack', color='black')+
 theme(legend.text=element_text(size=12))
-basesize <- 11
-p <- p + theme_bw() +
+basesize <- 8
+p <- p + theme_classic() +
 scale_y_discrete(name="") + 
 scale_x_continuous(name="% of occurence/perturbation") +
 scale_fill_manual(values=cols)+
@@ -923,66 +901,13 @@ scale_fill_manual(values=cols)+
   theme(axis.text.x = element_text(size = basesize * 1,angle = 60, hjust = 1,vjust=1, colour = "black"), 
                          axis.text.y = element_text(size = basesize * 1, colour='black'), 
                          panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
-        axis.title.x = element_text(size=basesize*1.2),axis.title.y = element_text(size=basesize*1.2), legend.position="bottom",
+        axis.title.x = element_text(size=basesize),axis.title.y = element_text(size=basesize), legend.position="bottom",
         plot.title = element_text(size=basesize*1), strip.text.x = element_text(size = basesize * 1, colour = "black", angle = 0), 
         strip.text.y = element_text(size = basesize * 1, colour = "black", angle = 0), 
-        legend.text=element_text(size=basesize), legend.title=element_text(size=basesize*1.2))+
+        legend.text=element_text(size=basesize), legend.title=element_text(size=basesize), legend.key.height= unit(0.25, 'cm'),
+    legend.key.width= unit(0.25, 'cm'))+
 guides(fill=guide_legend(title="DBD type",ncol=2))
-ggsave(p,filename=paste0(save_dir,"/DBDs_affected_frac.png"),width=6.5, height=6, dpi=500)
+ggsave(p,filename=paste0(save_dir,"/DBDs_affected_frac.png"),width=4.5, height=4, dpi=500)
 
 
 ##--------------------------------------------------------------------------
-
-##--- perturbation distribution per DBD type ---------------------
-
-tempx_data <- dbd_purt_dt[,c(5,8)]
-tempdbd <- tempx_data
-
-# wh <- which(tempdbd$DBD %like% 'NR C4-type')
-# if(length(wh) != 0){tempdbd$DBD[wh] <- 'Nuclear receptor'}
-wh <- which(tempdbd$DBD %like% ',')
-if(length(wh) != 0){
-    pdatam <- tempdbd[wh,]
-    pdatau <- tempdbd[-wh,]
-    for(i in 1:length(pdatam[[1]])){
-        tempv <- unlist(strsplit(pdatam$DBD[i], '[,]'))
-        for(j in 1:length(tempv)){
-            pdatau <- rbind(pdatau, data.frame(DBD=tempv[j], MEAN_DIFF=pdatam$MEAN_DIFF[i]))
-        }
-    }
-}else{
-    pdatau <- tempdbd
-}
-
-wh <- which(pdatau$DBD %in% pdata1$x)
-whe <- setdiff(seq(1,length(pdatau[[1]])), wh)
-pdatau$DBD[whe] <- paste0('Others (', length(pdata2[[1]]), ')')
-
-nnam <- c()
-for(k in 1:length(pdatau[[1]])){
-    wh <- which(pdatauniy$Category == pdatau$DBD[k])
-    nnam <- c(nnam, paste0(pdatauniy$Category[wh],':',pdatauniy$x[wh]))
-}
-
-pdatau$DBDA <- nnam
-
-p <- ggplot(pdatau, aes(DBDA, MEAN_DIFF)) + 
-geom_boxplot(outlier.shape = NA, drop=FALSE, lwd=0.1)+
-geom_jitter(aes(color=DBDA),size=0.5)+
-theme(legend.text=element_text(size=12))
-basesize <- 8
-p <- p + theme_bw(base_size = basesize) +
-scale_x_discrete(name="Cancer type") + 
-scale_y_continuous(name="Mean \u0394PSI", limits=c(-0.6,0.6)) +
-geom_hline(yintercept=0, color='blue', linetype='dashed', lwd=0.2)+
-# geom_text(data=pmdn, aes(y=pos, x=CANCER,label=count), position=position_dodge(width=0.9),hjust=0.5, vjust=0.5, angle=60, size=2.5)+
-scale_color_manual(values=cols)+
-theme(axis.text.x = element_text(size = basesize, angle = 60, hjust = 1,vjust=1, colour = "black"),
-axis.text.y = element_text(size = basesize, angle = 0, hjust = 0.5,vjust=0.5, colour = "black"), 
-panel.grid.major = element_blank(),panel.grid.minor = element_blank(),
-strip.text = element_text(size = basesize), axis.title=element_text(size=basesize*1.25))+
-guides(color='none')
-ggsave(p,filename=paste0(save_dir,"/Sig_events_DBDs.png"),width=3.5, height=4.5, dpi=500)
-
-
-####------------------------------------------------------------------

@@ -8,10 +8,11 @@ library(data.table)
 library(ggplot2)
 library(GenomicDataCommons)
 library(pheatmap)
-# library(cowplot)
+library(cowplot)
 library(ggrepel)
 
 save_dir <- 'results_rep/Dependency'
+
 if(dir.exists(save_dir)){
     unlink(save_dir, recursive=TRUE)
 }
@@ -62,8 +63,6 @@ for(k in 1:length(filt_cancer)){
     whx <- which(tempx$symbol %in% tfs$Gene_Symbol) ## number of AS events concerning TFs
     tempy <- tempx[whx,]
     tempy <- tempy[order(-abs(tempy$MEAN_DIFF)), ]
-    # tempz <- tempy[tempy$MEAN_DIFF > 0.2,] 
-    # tf_events[[k]] <- unique(tempz$symbol) 
     ugs <- unique(tempy$symbol) 
     tf_events_all[[k]] <- ugs
 
@@ -89,7 +88,7 @@ for(k in 1:length(filt_cancer)){
 }
 
 
-all_sig_events <- unique(unlist(tf_events_all)) ## 688 TFs related to all PTSEs in the 12 cancer types
+all_sig_events <- unique(unlist(tf_events_all)) ## 700 TFs related to all PTSEs in the 12 cancer types
 pdata <- data.frame(matrix(ncol=5, nrow=0))
 for(k in 1:length(filt_cancer)){
     temp <- dep_map[which(dep_map$lineage_3 %like% c2consi[[k]]),]
@@ -135,11 +134,13 @@ pdatal <- pdata
 # length(which(pdata$MINCHRONOS == 100))
 # pdata <- pdata[pdata$MAXMEANDIFF != 100, ] 
 ## 32 TFs had no values in the chronos evaluations --> removing those --> 669 TFs remain
+## pdataxx <- pdata[pdata$MINCHRONOS < 0, ]
+## pdatayy <- pdata[pdata$MINCHRONOS < -1, ]
 
 pdata$col <- ifelse(pdata$MAXMEANDIFF > 0, 'A', 'B')
 basesize <- 10
 ppx <- ggplot(data = pdata, aes(y=MINCHRONOS, x=MAXMEANDIFF, color=col)) + 
-geom_point(size=0.75, alpha=0.75)+
+geom_point(size=2)+
 scale_x_continuous(limits=c(-0.8,0.8))+
 scale_y_continuous()+
 # geom_hline(yintercept=0.2, color='red', linetype='dashed')+
@@ -147,78 +148,12 @@ scale_y_continuous()+
 # geom_vline(xintercept=0, color='blue', linetype='dashed')+
 scale_color_manual(values=c('#d95f02','#1b9e77'))+
 ylab("Chronos score")+xlab("Mean \u0394PSI")+
-theme_bw()+theme(axis.text.x = element_text(size = 1*basesize, angle = 60, vjust=1, hjust=1, colour = "black"),
+theme_classic()+theme(axis.text.x = element_text(size = 1*basesize, angle = 60, vjust=1, hjust=1, colour = "black"),
     axis.text.y = element_text(size = 1*basesize, angle = 0, colour = "black"),
     panel.grid.major = element_blank(),panel.grid.minor = element_blank(),
     axis.line = element_line(colour = "black"))+
 guides(color='none')
-ggsave(ppx,filename=paste0(save_dir, "/Scatter_dependency.png"),width=2, height=2.5, dpi=500)
-
-# pdatax <- pdata[abs(pdata$MAXMEDIANDIFF) > 0.2,  ]
-# pdatax <- pdatax[order(pdatax$MINCHRONOS), ]
-
-##--- Fraction of patients affected ------
-max_chronos <- -0.5
-pdataxx <- data.frame(matrix(ncol=7, nrow=0))
-for(k in 1:length(filt_cancer)){
-
-    temp <- data.table::fread(all_files[which(all_files %like% filt_cancer[k])], sep='\t')
-    wha <- which(temp$FDR < fdr)
-    whb <- which(abs(temp$MEAN_NORMAL-temp$MEAN_CANCER) > fdr)
-    wh <- intersect(wha, whb)
-    tempx <- temp[wh, ]
-    whx <- which(tempx$symbol %in% tfs$Gene_Symbol) ## number of AS events concerning TFs
-    tempy <- tempx[whx,]
-
-    pdatay <- pdata[pdata$CANCER == filt_cancer[k], ]
-    pdatay <- pdatay[pdatay$MINCHRONOS < max_chronos, ]
-
-    if(nrow(pdatay) == 0){next}
-
-    ## add fraction of patients affected --
-    whp <- which(paired_sam[[1]] == filt_cancer[k])
-    sams <- c()
-    stype <- c()
-    for(j in 1:length(pdatay[[1]])){
-        sams <- c(sams, max(tempy[tempy$as_id == pdatay$ASID[j], ]$POS, tempy[tempy$as_id == pdatay$ASID[j], ]$NEG))
-        stype <- c(stype, tempy[tempy$as_id == pdatay$ASID[j], ]$splice_type)
-    }
-
-    pdatay$PAT_FRAC <- (sams/paired_sam[[2]][whp])*100
-    pdatay$STYPE <- stype
-    pdataxx <- rbind(pdataxx, pdatay)
-}
-
-pdataxx$ID <- paste0(pdataxx$GENE,'_',pdataxx$ASID,'_',pdataxx$STYPE,'\n','(',pdataxx$CANCER,', ',signif(pdataxx$MAXMEANDIFF,3),')')
-
-tolabel <- subset(pdataxx, MINCHRONOS < -2)$ID
-whl <- which(pdataxx$ID %in% tolabel)
-pdataxx$PL <- ""
-pdataxx$PL[whl] <- tolabel
-
-p <- ggplot(pdataxx, aes(PAT_FRAC, MINCHRONOS, color=CANCER, label=PL)) + 
-geom_point()+
-theme(legend.text=element_text(size=12))
-basesize <- 10
-p <- p + 
-scale_x_continuous(name="% of patients", limits=c(0,110), breaks = seq(0, 100, by = 20)) + 
-scale_y_continuous(name="Minimum Chronos score") +
-scale_color_manual(values=c('#a6cee3','#1f78b4','#b2df8a','#fb9a99',
-    '#fdbf6f','#cab2d6','#6a3d9a','#e31a1c','#b15928','black','#9e0142','#053061'))+
-geom_text_repel(family = "Poppins",
-    max.overlaps=Inf,
-                      size = 2,
-                      color='black',
-                      arrow = arrow(length = unit(0.010, "npc")),
-                      min.segment.length = 0) +
-theme_bw()+theme(axis.text.x = element_text(size = 1*basesize, angle = 60, vjust=1, hjust=1, colour = "black"),
-    axis.text.y = element_text(size = 1*basesize, angle = 0, colour = "black"),
-    panel.grid.major = element_blank(),panel.grid.minor = element_blank(),
-    axis.line = element_line(colour = "black"), legend.position="bottom",axis.title=element_text(size=basesize),
-    legend.text=element_text(size=basesize), legend.title=element_text(size=basesize),
-    panel.border = element_blank())+
-guides(color='none')
-ggsave(p,filename=paste0(save_dir,"/Chronos_vs_patfrac.png"),width=4, height=3, dpi=500)
+ggsave(ppx,filename=paste0(save_dir, "/Scatter_dependency.png"),width=3, height=4, dpi=500)
 
 
 ##--- dependency plots -----------------------------
@@ -291,18 +226,30 @@ for(k in 1:length(filt_cancer)){
 
     pdx <- t(as.matrix(tempzz))
     p1 <- pheatmap(pdx, color=color, breaks=breaks, fontsize=4, cluster_rows=FALSE, cluster_cols=FALSE,cellheight=5, cellwidth = 5)
-    # all_plots[[k]] <- p1[[4]] 
+    all_plots[[k]] <- p1[[4]] 
     ggsave(p1[[4]],filename=paste0(save_dir, "/",filt_cancer[k],".png"),width=6, height=6, dpi=600)
 
 }
 
-# combined_plot <- cowplot::plot_grid(plotlist=all_plots,labels=filt_cancer) #nrow & ncol depend on how you want to 
-# ggsave(combined_plot,filename=paste0(save_dir, "/Dependency.png"),width=7, height=8, dpi=600)
-         
+combined_plot <- cowplot::plot_grid(plotlist=all_plots,labels=filt_cancer) #nrow & ncol depend on how you want to 
+ggsave(combined_plot,filename=paste0(save_dir, "/Dependency.png"),width=18, height=16, dpi=600)
+        
                           
 
 ## dependecy all ----
-wb1 <- openxlsx::createWorkbook(paste0(save_dir,'/Supplementary_file_S7.xlsx'))
+wb1 <- openxlsx::createWorkbook(paste0(save_dir,'/Supplementary_Table_S7.xlsx'))
+##--- column name explanations --
+tdatat <- data.frame(`Table fields explanation`=c('CANCER: TCGA cancer code',
+    'SYMBOL: HGNC gene symbol',
+   'AS_ID: Alternative splicing ID provided by TCGA SpliceSeq',
+   'AS_TYPE: Type of alternative splicing',
+   'MIN_CHRONOS: Minimum Chronos value over all considered cell lines corresponding to the cancer',
+   'MAX_MEAN_DIFF: Absolute maximum ΔPSI value among all PTSEs affecting the TF corresponding to the cancer',
+   'CELL_LINE: Cell line corresponding to MIN_CHRONOS'
+     ))
+openxlsx::addWorksheet(wb1, sheetName = 'INDEX')
+openxlsx::writeData(wb1, sheet = 'INDEX', tdatat)
+openxlsx::saveWorkbook(wb1, paste0(save_dir,'/Supplementary_Table_S7.xlsx'), overwrite = T)
 
 for(k in 1:length(filt_cancer)){
 
@@ -321,9 +268,10 @@ for(k in 1:length(filt_cancer)){
     temp$asid <- asid
     temp$astype <- astype
     temp <- temp[,-6]
-    colnames(temp) <- c('CANCER', 'TF','MIN_CHRONOS','MAX_MEAN_DIFF','CELL_LINE','AS_ID','AS_TYPE')
+    temp <- temp[,c(1,2,6,7,3,4,5)]
+    colnames(temp) <- c('CANCER', 'SYMBOL','AS_ID','AS_TYPE','MIN_CHRONOS','MAX_MEAN_DIFF','CELL_LINE')
     openxlsx::addWorksheet(wb1, sheetName = filt_cancer[k])
     openxlsx::writeData(wb1, sheet = filt_cancer[k], temp)
-    openxlsx::saveWorkbook(wb1, paste0(save_dir,'/Supplementary_file_S7.xlsx'), overwrite = T)
+    openxlsx::saveWorkbook(wb1, paste0(save_dir,'/Supplementary_Table_S7.xlsx'), overwrite = T)
 }
 

@@ -9,3 +9,5 @@ Rscript TF_DBD_splicing_patterns_analysis.r
 Rscript TF_ED_splicing_patterns_analysis.r
 Rscript TF_dependency.r
 Rscript TF_ATACseq.r
+Rscript TF_Lambourne_annotations.r
+Rscript map_hg38.r

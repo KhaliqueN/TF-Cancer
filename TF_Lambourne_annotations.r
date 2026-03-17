@@ -47,8 +47,7 @@ my_uni_lamf <- tf_ensemb_map$Uniprotswissprot[which(tf_ensemb_map$HGNC_symbol %i
 
 all_filesy <- all_filesx[which(alluni %in% my_uni_lamf)]
 alluniy <- unlist(lapply(strsplit(basename(all_filesy), '[_]'),'[[',1))
-# sk <- c()
-# sj <- c()
+
 
 for(k in 1:length(all_filesy)){
 
@@ -89,10 +88,6 @@ for(k in 1:length(all_filesy)){
         if(length(temp_pos) != 0){tempst[temp_pos] <- 1}
         afpos[[j]] <- tempst
 
-        # if(nchar(toalign1) < nchar(toalign2)){
-        #     sk <- c(sk, k)  
-        #     sj <- c(sj, j) 
-        # }
     }
 
     afposx <- as.data.frame(afpos)
@@ -124,6 +119,7 @@ for(k in 1:length(all_cancer)){
 
     all_files <- list.files(output_dir, pattern=paste0('*',all_cancer[k],'.txt'), full.names=TRUE)
     af_tfs <- 0
+
     for(j in 1:length(all_files)){
 
         temp <- data.table::fread(all_files[j])
@@ -139,9 +135,7 @@ for(k in 1:length(all_cancer)){
         wht <- which(lengths(evpos) > 0)
 
         if(length(wht) > 0){ ##-- if at least one event type is present
-            af_tfs <- af_tfs+1
-            # print(j)
-            # break
+            af_tfs <- af_tfs+1 ## Number of TFs wiht at least one event
 
             for(i in 1:length(wht)){ ##-- for each event type --
 
@@ -151,7 +145,7 @@ for(k in 1:length(all_cancer)){
                     tempx2 <- temp[[loop[h]]][setdiff(seq(1,length(temp[[1]])),evpos[[wht[i]]])]
                     whx1 <- which(tempx1 == 0)
                     whx2 <- which(tempx2 == 1)
-                    if(length(whx1) == 0 & length(whx2) == 0){
+                    if(length(whx1) < 3 & length(whx2) < 3){
                         tcancer <- c(tcancer, all_cancer[k])
                         tevent <- c(tevent, paste(unique(temp[[14+wht[i]]][evpos[[wht[i]]]]), collapse=';') )
                         tisoform <- c(tisoform, colnames(temp)[loop[h]])
@@ -162,7 +156,7 @@ for(k in 1:length(all_cancer)){
                     }
 
                 }
-                temp_pos <- evpos[[wht[i]]]
+                # temp_pos <- evpos[[wht[i]]] 
             }
         }
     }
@@ -202,7 +196,7 @@ for(k in 1:length(pdata1[[1]])){
 
     if((length(why) > 0) & (length(whz) > 0)){
         ## determine fold change --
-        activity_logfc <- c(activity_logfc, pdatax[whz, ]$M1H_mean/pdatax[why, ]$M1H_mean)
+        activity_logfc <- c(activity_logfc, (pdatax[why, ]$M1H_mean)/(pdatax[whz, ]$M1H_mean))
 
     }else{
         activity_logfc <- c(activity_logfc, NA)
@@ -211,12 +205,12 @@ for(k in 1:length(pdata1[[1]])){
 }
 pdata1$ACTVITY <- activity_logfc
 
-tsheets <- readxl::excel_sheets('results_rep/TF_splicing/Supplementary_file_S1.xlsx')
+tsheets <- readxl::excel_sheets('results_rep/TF_splicing/Supplementary_Table_S1.xlsx')
 dpsi <- c()
 for(k in 1:length(pdata1[[1]])){
 
     indx <- which(tsheets == pdata1$CANCER[k])
-    temp_splice <-  as.data.frame(readxl::read_excel('results_rep/TF_splicing/Supplementary_file_S1.xlsx',indx))
+    temp_splice <-  as.data.frame(readxl::read_excel('results_rep/TF_splicing/Supplementary_Table_S1.xlsx',indx))
     dpsi <- c(dpsi, temp_splice[temp_splice$AS_ID == pdata1$AS_ID[k], ]$MEAN_DIFF)
 
 }
@@ -226,23 +220,37 @@ pdata1$MEAN_DIFF <- dpsi
 
 ##---- plot delta psi vs transcription activity fold change ----
 pdata2 <- pdata1[complete.cases(pdata1), ]
+pdata2$SYMBOL <- unlist(lapply(strsplit(pdata2$ISOFORM, '[-]'), '[[', 1))
+pdata2$ID <- paste0(pdata2$SYMBOL,'_',pdata2$AS_ID,'_',pdata2$SPLICE_TYPE,'\n(',pdata2$CANCER,',',' \u0394PSI: ', signif(pdata2$MEAN_DIFF,3),')')
+pdata2$PL <- ''
+# wh1 <- which(pdata2$AS_ID %in% c('76094','77374'))
+# wh2 <- which(abs(pdata2$MEAN_DIFF) > 0.25)
+# wh <- intersect(wh1, wh2)
+# pdata2$PL[wh] <- pdata2$ID[wh]
+whx1 <- which(pdata2$CANCER %in% c('UCEC','LUSC'))
+whx2 <- which(pdata2$SYMBOL %in% c('HSF2', 'NFYA'))
+whx <- intersect(whx1, whx2)
+pdata2$PL[whx] <- pdata2$ID[whx]
 
-p <- ggplot(pdata2, aes(ACTVITY, MEAN_DIFF, color=SPLICE_TYPE)) + 
+
+p <- ggplot(pdata2, aes(ACTVITY, MEAN_DIFF, color=SPLICE_TYPE, label=PL)) + 
+# p <- ggplot(pdata2, aes(ACTVITY, MEAN_DIFF, color=SPLICE_TYPE)) + 
 geom_point()+
 theme(legend.text=element_text(size=12))
-basesize <- 10
+basesize <- 8
 p <- p + 
-scale_x_continuous(name="Transcription activity fold change (ref/alt)", limits=c(-1,2), breaks = seq(-1,2, by = 0.2)) + 
+scale_x_continuous(name="Transcription activity fold change (alt/ref)", limits=c(-1.5,2.5), breaks = seq(-1.5,2.5, by = 0.5)) + 
 scale_y_continuous(name="Mean \u0394PSI", limits=c(-0.6, 0.25)) +
-scale_color_manual(values=c('#e41a1c','#377eb8'))+
-geom_hline(yintercept=0, linetype='dashed')+
-geom_vline(xintercept=0, linetype='dashed')+
-# geom_text_repel(family = "Poppins",
-#     max.overlaps=Inf,
-#                       size = 3,
-#                       color='black',
-#                       arrow = arrow(length = unit(0.010, "npc")),
-#                       min.segment.length = 0) +
+scale_color_manual(values=c('#1b9e77','#d95f02','#7570b3','#e7298a','#66a61e','#e6ab02','#a6761d'))+
+# geom_hline(yintercept=0, linetype='dashed')+
+# geom_vline(xintercept=1, linetype='dashed')+
+geom_text_repel(family = "Poppins",
+    max.overlaps=Inf,
+                      size = 2.4,
+                      color='black',
+                      arrow = arrow(length = unit(0.010, "npc")),
+                      box.padding=0.5,
+                      min.segment.length = 0) +
 theme_bw()+theme(axis.text.x = element_text(size = 1*basesize, angle = 60, vjust=1, hjust=1, colour = "black"),
     axis.text.y = element_text(size = 1*basesize, angle = 0, colour = "black"),
     panel.grid.major = element_blank(),panel.grid.minor = element_blank(),
@@ -250,7 +258,69 @@ theme_bw()+theme(axis.text.x = element_text(size = 1*basesize, angle = 60, vjust
     legend.text=element_text(size=basesize), legend.title=element_text(size=basesize),
     panel.border = element_blank())+
 guides(color=guide_legend(title="Type of\nalternative\nsplicing\nevent", ncol=1))
-ggsave(p,filename=paste0(save_dir,"/trancriptional_activity.png"),width=5, height=3, dpi=500)
+ggsave(p,filename=paste0(save_dir,"/trancriptional_activity.png"),width=4.5, height=3, dpi=500)
+
+
+##--- save excel file ------
+pdata3 <- pdata2[,c(1,7,2,4,6,3,5)]
+colnames(pdata3) <- c('CANCER','SYMBOL','AS_ID','AS_TYPE','MEAN_DIFF','ISOFORM','ACTIVITY_CHANGE')
+wb1 <- openxlsx::createWorkbook(paste0(save_dir,'/Supplementary_Table_S8.xlsx'))
+##--- column name explanations --
+tdatat <- data.frame(`Table fields explanation`=c('CANCER: TGCA cancer code',
+    'SYMBOL: HGNC gene symbol',
+   'AS_ID: Alternative splicing ID provided by TCGA SpliceSeq',
+   'AS_TYPE: Type of alternative splicing',
+   'MEAN_DIFF: Mean of the differences of PSI values between paired normal and cancer samples',
+   'ISOFORM: Isoform from the Lambourne at al. study that overlapped with this study',
+   'ACTIVITY_CHANGE: M1H activity fold chnage between ISOFORM and the corresponding reference protein taken from Lambourne et al.'
+     ))
+openxlsx::addWorksheet(wb1, sheetName = 'INDEX')
+openxlsx::writeData(wb1, sheet = 'INDEX', tdatat)
+openxlsx::saveWorkbook(wb1, paste0(save_dir,'/Supplementary_Table_S8.xlsx'), overwrite = T)
+
+openxlsx::addWorksheet(wb1, sheetName = 'Table S8')
+openxlsx::writeData(wb1, sheet = 'Table S8', pdata3)
+openxlsx::saveWorkbook(wb1, paste0(save_dir,'/Supplementary_Table_S8.xlsx'), overwrite = T)
+
+
+
+##--- determine which splicing event to show details for -------------------------
+perturbed_tfs_unq <- 'results_rep/TF_splicing/Supplementary_Table_S3.xlsx'
+perturbed_tfs_DBD <- 'results_rep/TF_DBD/Supplementary_Table_S4.xlsx'
+perturbed_tfs_ED <- 'results_rep/TF_ED/Supplementary_Table_S5.xlsx'
+perturbed_tfs_lam <- 'results_rep/Lambourne/Supplementary_Table_S8.xlsx'
+temp_dbd <- list()
+temp_ed <- list()
+loop <- length(all_cancer)+1
+for(k in 2:loop){
+    temp_dbd[[k-1]] <- openxlsx::read.xlsx(perturbed_tfs_DBD, k)$AS_ID
+    temp_ed[[k-1]] <- openxlsx::read.xlsx(perturbed_tfs_ED, k)$AS_ID
+}
+
+temp_uq <- list()
+for(k in 2:loop){
+    temp <- openxlsx::read.xlsx(perturbed_tfs_unq, k)
+    temp_uq[[k-1]] <- temp[!is.na(temp$CI_Type),]$AS_ID
+}
+
+temp_lam <- openxlsx::read.xlsx(perturbed_tfs_lam, 2)
+
+# temp_lam <- list()
+# for(k in 2:loop){
+#     temp_lam[[k-1]] <- temp[!is.na(temp$CI_Type),]$AS_ID
+# }
+
+ed_ovr <- list()
+dbd_ovr <- list()
+for(k in 1:length(all_cancer)){
+    tempc <- temp_lam[temp_lam$CANCER == all_cancer[k], ]
+
+    if(nrow(tempc) != 0){
+        ed_ovr[[k]] <- intersect(temp_ed[[k]], tempc$AS_ID)
+        dbd_ovr[[k]] <- intersect(temp_dbd[[k]], tempc$AS_ID)
+    }
+}
+
 
 
 
@@ -267,7 +337,9 @@ ggsave(p,filename=paste0(save_dir,"/trancriptional_activity.png"),width=5, heigh
 
 #     if((length(why) > 0) & (length(whz) > 0)){
         
-#         print(k)
+#         ## number of protein-DNA interactions for the reference
+#         tpdna <- which(unlist(tempf[why,]) == 'TRUE')
+#         apdna <- which(unlist(tempf[whz,]) == 'TRUE')
 
 #     }else{
         

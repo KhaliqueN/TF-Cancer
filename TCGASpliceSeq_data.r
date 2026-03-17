@@ -25,7 +25,7 @@ for(k in 1:length(all_psi)){
 	##-- read the corresponding PSI file --------------------------
 	temp_psi <- data.table::fread(all_psi[k], sep='\t', fill=TRUE)
 	temp_psi <- as.data.frame(temp_psi)
-	##-- patient IDs start from column 11, and splciing events start from row 14!
+	##-- patient IDs start from column 11, and splcing events start from row 14!
 
 	temp_col_pos1 <- which(colnames(temp_psi) %like% '_Norm')
 	temp_col_pos2 <- which(colnames(temp_psi) %like% 'TCGA_')

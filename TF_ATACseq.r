@@ -12,6 +12,7 @@ library(dplyr)
 library(GenomicDataCommons)
 
 save_dir <- 'results_rep/Footprinting'
+
 if(dir.exists(save_dir)){
     unlink(save_dir, recursive=TRUE)
 }
@@ -19,13 +20,6 @@ dir.create(save_dir, recursive=TRUE)
 
 ##-- TFs -------------------
 tfs <- data.table::fread('data/filtered_TFs_curated.txt', sep='\t')
-
-# dbd_purt <- data.table::fread('../data/Events_perturbing_DBD.txt')
-# ed_purt <- data.table::fread('../data/Events_perturbing_ED.txt')
-##----------------------------------------------------------------------
-
-# paired_sam <- data.table::fread('../data/cancer_paired_samples.txt')
-# paired_sam <- paired_sam[-4]
 
 input_dir <- 'data/PSI_data'
 fdr <- 0.05
@@ -44,6 +38,7 @@ tmas <- as.data.frame(readxl::read_excel('data/aav1898_data_s6.xlsx', 1))
 tmasx <- tmas[17:length(tmas[[1]]),]
 colnames(tmasx) <- tmasx[1,]
 tmasx <- tmasx[-1,]
+## tf-motif combinations ...  unique(paste0(tmasx[[2]],'_',tmasx[[3]]))  plyr::count(paste0(tmasx[[2]],'_',tmasx[[3]]))
 
 all_samples <- colnames(tmasx)[-c(1,2,3,4)]
 all_samples <- gsub('-','_', all_samples)
@@ -91,8 +86,6 @@ for(k in 1:length(all_cancer)){
         ##-- filter tempz based on available atac-seq data ---
         tempz <- tempz[tempz$symbol %in% tempq$TF_Name, ]
         tempz <- tempz[order(tempz$as_id), ]
-        # tempy1 <- tempy[tempy$symbol %in% tempz$symbol,]
-        # tempy1 <- tempy1[order(tempy1$as_id), ]
 
         tempz3 <- tempz[,c(1,2,3)]
         tempz1 <- tempz[,-c(1,2,3)]
@@ -100,6 +93,7 @@ for(k in 1:length(all_cancer)){
         tempz2 <- tempz1[match(colnames(tempq1), colnames(tempz1))] ### PSI values -----
     # print(paste0('# of events: ',length(tempz3[[1]])))
     # print(paste0('# of tfs: ',length(unique(tempz3[[1]]))))
+    print(length(tempz2))
 
         ##-- correlation between Footprinting depth and splicing event PSI values ----
         for(j in 1:length(tempz2[[1]])){
@@ -146,7 +140,7 @@ for(k in 1:length(all_cancer)){
     temp <- pdata[pdata$CANCER == all_cancer[k], ]
     # print(length(temp[[1]]))
     temp <- temp[complete.cases(temp), ]
-    # print(length(temp[[1]]))
+    print(length(temp[[1]]))
     ssum <- ssum+length(unique(temp$ASID))
     print(paste0('# of events: ',length(unique(temp$ASID))))
     print(paste0('# of TFs: ',length(unique(temp$TF))))
@@ -168,7 +162,6 @@ tmasx <- tmasx[-1,]
 
 all_samples <- colnames(tmasx)[-c(1,2,3,4)]
 all_samples <- gsub('-','_', all_samples)
-rnd_expr <- 100
 
 tcancer <- c()
 tcor <- c()
@@ -277,8 +270,32 @@ data.table::fwrite(TF_FP_all, paste0(save_dir,'/Footprinting_correlation.txt'),s
 
 TF_FP_allx <- TF_FP_all[,-c(7,10)]
 
-colnames(TF_FP_allx) <- c('CANCER','TF','AS_ID','AS_TYPE','DNA_MOTIF','SPEARMAN_COR','P_VALUE','FOOTPRINT','FDR')
-data.table::fwrite(TF_FP_allx, paste0(save_dir,'/Supplementary_file_S6.csv'),sep='\t',row.names=FALSE, quote=FALSE)
+colnames(TF_FP_allx) <- c('CANCER','SYMBOL','AS_ID','AS_TYPE','DNA_MOTIF','SPEARMAN_COR','P_VALUE','FOOTPRINT','FDR')
+
+TF_FP_allx <- TF_FP_allx[order(-abs(TF_FP_allx$SPEARMAN_COR)), ]
+
+
+wb1 <- openxlsx::createWorkbook(paste0(save_dir,'/Supplementary_Table_S6.xlsx'))
+##--- column name explanations --
+tdatat <- data.frame(`Table fields explanation`=c('CANCER: TGCA cancer code',
+    'SYMBOL: HGNC gene symbol',
+   'AS_ID: Alternative splicing ID provided by TCGA SpliceSeq',
+   'AS_TYPE: Type of alternative splicing',
+   'DNA_MOTIF: DNA motif of the concerned transcription factor',
+   'SPEARMAN_COR: Spearman correlation value of the footprinting data with the PSI values of the concerned splicing event',
+   'P_VALUE: Fraction of random trials in which the random correlations were better than actual correlation',
+   'FOOTPRINT: Footprint type',
+     'FDR: Corrected P_VALUE'
+     ))
+openxlsx::addWorksheet(wb1, sheetName = 'INDEX')
+openxlsx::writeData(wb1, sheet = 'INDEX', tdatat)
+openxlsx::saveWorkbook(wb1, paste0(save_dir,'/Supplementary_Table_S6.xlsx'), overwrite = T)
+
+openxlsx::addWorksheet(wb1, sheetName = 'Table S6')
+openxlsx::writeData(wb1, sheet = 'Table S6', TF_FP_allx)
+openxlsx::saveWorkbook(wb1, paste0(save_dir,'/Supplementary_Table_S6.xlsx'), overwrite = T)
+
+# data.table::fwrite(TF_FP_allx, paste0(save_dir,'/Supplementary_Table_S6.csv'),sep='\t',row.names=FALSE, quote=FALSE)
 
 TF_FP_all <- data.table::fread(paste0(save_dir,'/Footprinting_correlation.txt'),sep='\t')
 ##---------------------------------------
@@ -365,8 +382,8 @@ for(k in 1:length(tempd3[[1]])){
 tempd3$CORR_MAX <- cormax
 tempd3$SIG <- tsig
 tempd3$IDD <- paste0(tempd3$TF,'_',tempd3$ASID,'_',tempd3$SPLICE_TYPE, '\n (', tempd3$CANCER,', \u0394PSI: ',signif(tempd3$MEAN_DIFF,2),')')
-tomark <- tempd3[tempd3$SIG != 'Neither', ]$IDD ## 146 PTSE cancertype pairs are significant
-# unique(tempd3[tempd3$SIG != 'Neither', ]$ASID) ## 122 PTSEs are significant
+tomark <- tempd3[tempd3$SIG != 'Neither', ]$IDD ## 153 PTSE cancertype pairs are significant
+# unique(tempd3[tempd3$SIG != 'Neither', ]$ASID) ## 136 PTSEs are significant
 
 # tolabel1 <- subset(tempd3, IDD %in% tomark & abs(MEAN_DIFF) > 0.2)$ID
 # tolabel2 <- subset(tempd3, IDD %in% tomark & abs(CORR) > 0.5)$ID
@@ -375,7 +392,7 @@ tomark <- tempd3[tempd3$SIG != 'Neither', ]$IDD ## 146 PTSE cancertype pairs are
 # tolabela <- intersect(tolabel1, tolabel2)
 # tolabelb <- intersect(tolabel1, tolabel3)
 # tolabel <- union(tolabela, tolabelb)
-tolabel <- subset(tempd3, IDD %in% tomark & abs(MEAN_DIFF) > 0.4)$ID
+tolabel <- subset(tempd3, IDD %in% tomark & abs(MEAN_DIFF) > 0.35)$ID
 
 whl <- which(tempd3$ID %in% tolabel)
 tolabelx <- tempd3$IDD[which(tempd3$ID %in% tolabel)]
@@ -398,7 +415,7 @@ geom_text_repel(family = "Poppins",
                       seed=NA,
                       arrow = arrow(length = unit(0.010, "npc")),
                       min.segment.length = 0) +
-theme_bw()+theme(axis.text.x = element_text(size = 1*basesize, angle = 60, vjust=1, hjust=1, colour = "black"),
+theme_classic()+theme(axis.text.x = element_text(size = 1*basesize, angle = 60, vjust=1, hjust=1, colour = "black"),
     axis.text.y = element_text(size = 1*basesize, angle = 0, colour = "black"),
     panel.grid.major = element_blank(),panel.grid.minor = element_blank(),
     axis.line = element_line(colour = "black"))+

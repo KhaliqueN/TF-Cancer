@@ -8,8 +8,8 @@ library(ggplot2)
 library(GenomicDataCommons)
 library(biomaRt)
 library(seqinr)
-# library(dorothea)
-library(pheatmap)
+# # library(dorothea)
+# library(pheatmap)
 library(ggrepel)
 library(ggpp)
 
@@ -35,7 +35,7 @@ paired_sam <- paired_sam[-4]
 ## Some of the event coordinates from TCGA splice seq does not overlap to any of the exons mapped from the canonical protein
 ## sequence from Uniprot. This is because the canonical seqeunce is not always the longest.
 
-##----------- Plots -------
+##----------- Plots --------
 
 ES_affecting_TFs_with_DBD <- vector(mode = "list", length = length(all_cancer))
 AP_affecting_TFs_with_DBD <- vector(mode = "list", length = length(all_cancer))
@@ -52,7 +52,6 @@ TFs_with_affected_DBD_AA <- vector(mode = "list", length = length(all_cancer))
 TFs_with_affected_DBD_ME <- vector(mode = "list", length = length(all_cancer))
 
 tevents <- c()
-# tf_fam <- c()
 taa <- c()
 tdbd <- c()
 tcancer <- c()
@@ -60,7 +59,6 @@ tgene <- c()
 
 tempfun <- function(tempo_data, tempxz, xxp){
 
-    # print(as.numeric(xxp))
     temp1_c <- plyr::count(tempo_data[,c(21,as.numeric(xxp))])
     colnames(temp1_c) <- c('ED','AS','freq')
 
@@ -249,20 +247,6 @@ aa_purt <- data.frame(CANCER=tcancer, ASID=tevents, AA=taa, DBD=tdbd, GENE=tgene
 
 
 # ##--- transfer DBD names----
-# temp_dbd_map <- data.table::fread('../data/Prosite_DBD_map.txt')
-# mdbd <- c()
-# for(k in 1:length(aa_purt[[1]])){
-#     tempdd <- paste(setdiff(unique(temp_dbd_map[temp_dbd_map$DBD == aa_purt$DBD[k], ]$PROSITE),''),collapse=';')
-#     if(length(tempdd) > 1){break}
-#     mdbd <- c(mdbd, tempdd)
-# }
-
-# ##--------------------------
-# aa_purt$DBD <- unlist(substr(aa_purt$DBD,1,8))
-# aa_purtx <- unique(aa_purt[,c(2,3)])
-
-## check the lengths
-# yy = mapply(function(x,y) length(x) > length(y), TFs_with_affected_DBD_ES, ES_affecting_TFs_with_DBD)
 ##----------------------------------------------------------------------------
 ##--- which TFs have a DBD info ----
 counter <- 0
@@ -305,7 +289,6 @@ corr4 <- c()
 counter <- 0
 tgenet <- c()
 tsplice <- c()
-wb1 <- openxlsx::createWorkbook(paste0(save_dir,'/Supplementary_file_S5.xlsx'))
 
 for(k in 1:length(all_cancer)){
 
@@ -396,14 +379,6 @@ for(k in 1:length(all_cancer)){
 
     }
     
-    ## save excel sheet ----
-    # tdatat <- data.frame(GENE=tgene, AS=asidt, DBD=odbdt, MEAN_CANCER=corr1t, MEAN_NORMAL=corr2t, MEAN_DIFF=corr3t, FDR=corr4t)
-    tdatat <- data.frame(AS_ID=asidt, DBD=odbdt)
-    tdatat <- tdatat[tdatat$DBD != 0, ]
-    # tdatat <- tdatat[order(abs(tdatat$MEAN_DIFF), decreasing=TRUE), ]
-    openxlsx::addWorksheet(wb1, sheetName = all_cancer[k])
-    openxlsx::writeData(wb1, sheet = all_cancer[k], tdatat)
-    openxlsx::saveWorkbook(wb1, paste0(save_dir,'/Supplementary_file_S5.xlsx'), overwrite = T)
 }
 
 tdata <- data.frame(CANCER=tcancer, SYMBOL=tgenet, AS=asid, SPLICE_TYPE=tsplice, ED=odbd, MEAN_CANCER=corr1, MEAN_NORMAL=corr2, MEAN_DIFF=corr3, FDR=corr4)
@@ -460,7 +435,7 @@ p <- ggplot(pdata, aes(Cancer, value, fill=variable)) +
 geom_bar(stat="identity",position="dodge")+
 theme(legend.text=element_text(size=12))
 basesize <- 8
-p <- p + theme_bw(base_size = basesize) +
+p <- p + theme_classic(base_size = basesize) +
 scale_x_discrete(name="Cancer type") + 
 scale_y_continuous(name="# of PTSEs or TFs", limits=c(0,maxv+10)) +
 # geom_text(aes(label=count), position=position_dodge(width=0.9),hjust=0, vjust=0, angle=75, size=3)+
@@ -469,9 +444,9 @@ geom_text(aes(label=value), position=position_dodge(width=0.9),hjust=0, vjust=0.
 theme(axis.text.x = element_text(size = basesize, angle = 60, hjust = 0.5,vjust=0.5, colour = "black"),
 axis.text.y = element_text(size = basesize, angle = 0, hjust = 0.5,vjust=0.5, colour = "black"), 
 panel.grid.major = element_blank(),panel.grid.minor = element_blank(),
-strip.text = element_text(size = basesize), axis.title=element_text(size=basesize*1.25), legend.position=c(0.85,0.82))+
+strip.text = element_text(size = basesize), axis.title=element_text(size=basesize*1), legend.position=c(0.85,0.86))+
 guides(fill=guide_legend(title="Entity",ncol=1))
-ggsave(p,filename=paste0(save_dir,"/Sig_events_TFs.png"),width=3.5, height=3, dpi=400)
+ggsave(p,filename=paste0(save_dir,"/Sig_events_TFs.png"),width=3.5, height=2.8, dpi=400)
 
 
 ##--- plot the number of splicing events of different types affecting TFs -----------------
@@ -482,17 +457,18 @@ basesize <- 8
 ppx <- ggplot(data = pData1, aes(x=Cancer, y=value, fill=variable, group=Cancer)) + geom_bar(stat="identity")+
 # geom_text(aes(label=X, y=100),size=2.5, vjust=0.5, hjust=0, angle=60)+
 scale_y_continuous(limits=c(0,101), breaks = seq(0, 100, by = 10))+
-xlab("Cancer type")+ylab("% of PTSEs affecting DBDs")+
+xlab("Cancer type")+ylab("% of PTSEs \naffecting EDs")+
 scale_fill_manual(labels=c("A" = "Alternate Acceptor", 
     "B"="Alternate Donor", "C"="Alternate Promoter","D"="Alternate Terminator","E"="Exon skip","F"="Mutually Exclusive Exons", "G"="Retained Intron"), 
 values=c('#1b9e77','#d95f02','#7570b3','#e7298a','#66a61e','#e6ab02','#a6761d'))+
-theme_bw()+theme(axis.text.x = element_text(size = 1*basesize, angle = 60, vjust=1, hjust=1, colour = "black"),
+theme_classic()+theme(axis.text.x = element_text(size = 1*basesize, angle = 60, vjust=1, hjust=1, colour = "black"),
     axis.text.y = element_text(size = 1*basesize, angle = 0, colour = "black"),
     panel.grid.major = element_blank(),panel.grid.minor = element_blank(),
     axis.line = element_line(colour = "black"), legend.position="bottom",axis.title=element_text(size=basesize),
-    legend.text=element_text(size=basesize), legend.title=element_text(size=basesize))+
-guides(fill=guide_legend(title="Type of\nalternative\nsplicing event", ncol=1, override.aes = list(size = 1)))
-ggsave(ppx,filename=paste0(save_dir, "/Events_types_perturbing_EDs.png"),width=3, height=4, dpi=400)
+    legend.text=element_text(size=basesize), legend.title=element_text(size=basesize), legend.key.height= unit(0.25, 'cm'),
+    legend.key.width= unit(0.25, 'cm'))+
+guides(fill=guide_legend(title="Type of\nalternative\nsplicing event", ncol=1))
+ggsave(ppx,filename=paste0(save_dir, "/Events_types_perturbing_EDs.png"),width=3, height=3.2, dpi=400)
 
 
 ###------ Distribution of perturbation values vs. DBD AAs perturbed ----------------------------------------------------
@@ -525,33 +501,61 @@ for(k in 1:length(all_cancer)){
 
 pdata <- data.frame(CANCER=tcancer, GENE=tgene, ASID=tas, SPLICE_TYPE=tsplice, DBD=tdbd, AA=taa, MEAN_DIFF=tdiff)
 
+##--- save excel ----
+wb1 <- openxlsx::createWorkbook(paste0(save_dir,'/Supplementary_Table_S5.xlsx'))
+##--- column name explanations --
+tdatat <- data.frame(`Table fields explanation`=c(
+   'SYMBOL: HGNC gene symbol',
+   'AS_ID: Alternative splicing ID provided by TCGA SpliceSeq',
+   'AS_TYPE: Type of alternative splicing',
+   'ED: Type of effector domain of the corresponding transcription factor',
+   'AA_LOSS: Percentage of amino acids of the concerned DBD region that is affected by the corresponding splicing event'
+     ))
+openxlsx::addWorksheet(wb1, sheetName = 'INDEX')
+openxlsx::writeData(wb1, sheet = 'INDEX', tdatat)
+openxlsx::saveWorkbook(wb1, paste0(save_dir,'/Supplementary_Table_S5.xlsx'), overwrite = T)
+
+for(k in 1:length(all_cancer)){
+
+    tempf <- pdata[pdata$CANCER == all_cancer[k], ][,seq(2,6)]
+    colnames(tempf) <- c('SYMBOL','AS_ID','AS_TYPE','ED','AA_LOSS')
+    
+    ## save excel sheet ----
+    tdatat <- tempf
+
+    tdatat <- tdatat[tdatat$ED != 0, ]
+    # tdatat <- tdatat[order(abs(tdatat$MEAN_DIFF), decreasing=TRUE), ]
+    openxlsx::addWorksheet(wb1, sheetName = all_cancer[k])
+    openxlsx::writeData(wb1, sheet = all_cancer[k], tdatat)
+    openxlsx::saveWorkbook(wb1, paste0(save_dir,'/Supplementary_Table_S5.xlsx'), overwrite = T)
+}
+
+##---------------------
+
 pdata$ID <- paste0(pdata$GENE,'_',pdata$ASID,'_',pdata$SPLICE_TYPE,'\n','(',pdata$CANCER,', ',pdata$DBD,')')
-pdata$AA <- as.numeric(pdata$AA)
-tolabel <- subset(pdata, abs(MEAN_DIFF) > 0.4)$ID
-# tolabel2 <- subset(pdata, AA > 80)$ID
-# tolabel <- intersect(tolabel1, tolabel2)
+tolabel <- subset(pdata, abs(MEAN_DIFF) > 0.4 & AA == 100)$ID
 whl <- which(pdata$ID %in% tolabel)
 pdata$PL <- ""
 pdata$PL[whl] <- tolabel
 
 pdata$AA <- as.numeric(pdata$AA)
-# p <- ggplot(pdata, aes(AA, MEAN_DIFF, color=CANCER, label=PL)) + 
-p <- ggplot(pdata, aes(AA, MEAN_DIFF, color=CANCER)) + 
+p <- ggplot(pdata, aes(AA, MEAN_DIFF, color=CANCER, label=PL)) + 
+# p <- ggplot(pdata, aes(AA, MEAN_DIFF, color=CANCER)) + 
 geom_point()+
 theme(legend.text=element_text(size=12))
-basesize <- 10
+basesize <- 8
 p <- p + 
 scale_x_continuous(name="% of ED residues", limits=c(0,110), breaks = seq(0, 100, by = 20)) + 
 scale_y_continuous(name="Mean \u0394PSI", limits=c(-0.8, 0.8)) +
 scale_color_manual(values=c('#a6cee3','#1f78b4','#b2df8a','#fb9a99','#ffff99',
     '#fdbf6f','#ff7f00','#cab2d6','#6a3d9a','#e31a1c','#b15928','black','#9e0142','#053061'))+
-# geom_text_repel(family = "Poppins",
-#     max.overlaps=Inf,
-#                       size = 2,
-#                       color='black',
-#                       arrow = arrow(length = unit(0.010, "npc")),
-#                       min.segment.length = 0) +
-theme_bw()+theme(axis.text.x = element_text(size = 1*basesize, angle = 60, vjust=1, hjust=1, colour = "black"),
+geom_text_repel(family = "Poppins",
+    max.overlaps=Inf,
+                      size = 2.4,
+                      color='black',
+                      arrow = arrow(length = unit(0.010, "npc")),
+                      min.segment.length = 0) +
+theme_classic()+theme(axis.text.x = element_text(size = 1*basesize, angle = 60, vjust=1, hjust=1, colour = "black"),
     axis.text.y = element_text(size = 1*basesize, angle = 0, colour = "black"),
     panel.grid.major = element_blank(),panel.grid.minor = element_blank(),
     axis.line = element_line(colour = "black"),axis.title=element_text(size=basesize),
@@ -559,8 +563,31 @@ theme_bw()+theme(axis.text.x = element_text(size = 1*basesize, angle = 60, vjust
     panel.border = element_blank())+
 # guides(color='none')
 guides(color=guide_legend(title="Cancer type", ncol=2))
-ggsave(p,filename=paste0(save_dir,"/AA_vs_meanDiff.png"),width=5, height=3, dpi=500)
+ggsave(p,filename=paste0(save_dir,"/AA_vs_meanDiff.png"),width=5.5, height=2.8, dpi=500)
 
+
+##--- distribution of number of events with DBD AA loss percentage -------------
+# pdata$bval <- cut(pdata$AA, breaks = seq(0,100,5), include.lowest=TRUE)
+pdatay <- unique(pdata[, c(2,3,4,5,6)])
+pdatay$bval <- cut(pdatay$AA, breaks = seq(0,100,5), include.lowest=TRUE)
+pdatax <- plyr::count(pdatay$bval)
+maxv <- max(pdatax$freq)
+p <- ggplot(pdatax, aes(x, freq)) + geom_bar(stat="identity",color='black')
+p <- p + theme_classic() +
+  scale_y_continuous(name="# of PTSEs", limits=c(0,maxv+20)) +
+  scale_x_discrete(name="% of ED amino acids affected") +
+  geom_text(aes(label=freq), position=position_dodge(width=0.9),hjust=0, vjust=0.5, angle=85, size=2.4)+
+  theme(axis.text.x = element_text(size = basesize * 1,angle = 60, hjust = 1,vjust=1, colour = "black"), 
+                         axis.text.y = element_text(size = basesize * 1, colour='black'), 
+                         panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+        axis.title.x = element_text(size=basesize*1),axis.title.y = element_text(size=basesize*1), 
+        plot.title = element_text(size=basesize*1), strip.text.x = element_text(size = basesize * 1, colour = "black", angle = 0), 
+        strip.text.y = element_text(size = basesize * 1, colour = "black", angle = 0), legend.position="right", 
+        legend.text=element_text(size=basesize))+guides(fill='none')
+ggsave(p,filename=paste0(save_dir,'/AA_loss_distribution.png'),width=3, height=3, dpi=500)
+
+
+##------------------------------------------------------------------------------
 
 ##--- total number of events -----
 # tevs <- unique(unlist(sig_events)) 
@@ -578,16 +605,8 @@ for(k in 1:length(all_files)){
     }
 }
 
-
 pdata <- plyr::count(all_dbds)
 
-
-# pdata <- pdata[order(-pdata$freq),]
-# wh <- which(pdata$freq < 5)
-# pdata2 <- pdata[wh,]
-# pdata1 <- pdata[-wh,]
-# pdatax <- rbind(pdata1, data.frame(x=paste0('Others (',length(pdata2[[1]]),')'),freq=sum(pdata2$freq)))
-# pdatax$x <- factor(pdatax$x, levels=pdatax$x)
 
 ##--affected DBD per gene ---
 event_dbd_unq <- unique(dbd_purt_dt[, c(2,5)])
@@ -601,30 +620,11 @@ for(k in 1:length(pdatamul[[1]])){
     }
 }
 pdataq <- plyr::count(pdatauni[[2]])
-# pdataq <- rbind(pdataq, data.frame(x=setdiff(pdata$x, pdataq$x), freq=0))
 
 pdata <- pdata[order(pdata$x),]
 pdataq <- pdataq[order(pdataq$x),]
 pdataq$frac <- pdataq$freq/pdata$freq
 pdataq <- pdataq[order(pdataq$frac), ]
-
-# p <- ggplot(pdatax, aes(x, freq)) + 
-# geom_bar(stat="identity",position=position_dodge())+
-# theme(legend.text=element_text(size=12))
-# basesize <- 12
-# p <- p + theme_bw(base_size = basesize * 0.8) +
-# scale_x_discrete(name="DNA binding domain") + 
-# scale_y_continuous(name="Frequency of occurence", limits=c(0,max(pdatax$freq)+40)) +
-# geom_text(aes(label=freq), position=position_dodge(width=0.9),hjust=0, vjust=0, angle=75, size=3)+
-# theme(axis.text.x = element_text(size = basesize * 0.6, angle = 60, hjust = 1,vjust=1, colour = "black"),
-# axis.text.y = element_text(size = basesize * 0.6, angle = 0, hjust = 0.5,vjust=0.5, colour = "black"), 
-# panel.grid.major = element_blank(),panel.grid.minor = element_blank(), 
-# strip.text = element_text(size = basesize * 0.8), axis.title=element_text(basesize * 0.8))+
-# guides(fill='none')
-# ggsave(p,filename=paste0(save_dir,"/DBDs_background.png"),width=7, height=4, dpi=400)
-
-
-
 
 
 ##--- Distribution of ED positions --------------------------------------------------------------------
@@ -657,10 +657,6 @@ qdata <- data.frame(ED=idbd, RPOS=rel_pos, ID=ids)
 ## bin the relative positions
 qdata$bval <- cut(qdata$RPOS, breaks = seq(0,1,0.05), include.lowest=TRUE)
 
-# wh <- which(qdata$ED %in% pdata$x)
-# whe <- setdiff(seq(1,length(qdata[[1]])), wh)
-# qdata$DBD[whe] <- paste0('Others (', length(pdata2[[1]]), ')')
-
 udbd <- unique(qdata$bval)
 qqdata <- data.frame(matrix(nrow=0, ncol=4))
 for(j in 1:length(udbd)){
@@ -679,7 +675,7 @@ cols <- c('#a6cee3','#1f78b4','#b2df8a','#33a02c','#fb9a99','#e31a1c','#fdbf6f',
     '#8dd3c7','#ffffb3','#bebada','#fb8072','#80b1d3','#fdb462','#b3de69','#fccde5','#d9d9d9','#bc80bd','#ccebc5','#ffed6f','#000000',
     '#ffffff','#636363','#bdbdbd')
 p <- ggplot(qqdata, aes(FLAG, freq, fill=x)) + geom_bar(stat="identity",position="stack",color='black')
-p <- p + theme_bw() +
+p <- p + theme_classic() +
   scale_y_continuous(name="# of amino acids") +
   scale_x_discrete(name="Relative sequence position bracket") +
   scale_fill_manual(values=cols)+
@@ -689,14 +685,15 @@ p <- p + theme_bw() +
                          panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
         axis.title.x = element_text(size=basesize*1),axis.title.y = element_text(size=basesize*1), 
         plot.title = element_text(size=basesize*1), strip.text.x = element_text(size = basesize * 1, colour = "black", angle = 0), 
-        strip.text.y = element_text(size = basesize * 1, colour = "black", angle = 0), legend.position="bottom", 
-        legend.text=element_text(size=10))+guides(fill='none')
-ggsave(p,filename=paste0(save_dir,'/ED_distribution.png'),width=3.5, height=4, dpi=500)
+        strip.text.y = element_text(size = basesize * 1, colour = "black", angle = 0), legend.position="right", 
+        legend.text=element_text(size=10), legend.key.height= unit(0.25, 'cm'),
+    legend.key.width= unit(0.25, 'cm'))+guides(fill=guide_legend(title="ED type",ncol=1))
+ggsave(p,filename=paste0(save_dir,'/ED_distribution.png'),width=4.5, height=4, dpi=500)
 
 
 # ##-----------------------------------
 
-##--- which DBD types are affected over all cancer --------------------------------------
+##--- which ED types are affected over all cancer --------------------------------------
 ##---------------------------------------------------------------------------------------
 ##-- unique event DBD pair --
 event_dbd_unq <- unique(dbd_purt_dt[, c(3,5)])
@@ -712,34 +709,6 @@ for(k in 1:length(pdatamul[[1]])){
 
 pdataunix <- plyr::count(pdatauni$ED)
 pdatauniy <- pdataunix
-
-
-# wh <- which(pdataunix$x %in% pdata1$x)
-# whe <- setdiff(seq(1,length(pdataunix[[1]])), wh)
-# pdataunix$x[whe] <- paste0('Others (', length(pdata2[[1]]), ')')
-# pdatauniy <- aggregate(pdataunix$freq, by=list(Category=pdataunix$x), FUN=sum)
-
-# ## add missing DBDs ---
-# mdbd <- setdiff(pdatax$x, pdatauniy$Category)
-# pdatauniy <- rbind(pdatauniy, data.frame(Category=mdbd, x=0))
-# pdatauniy$Category <- factor(pdatauniy$Category, levels=pdatax$x)
-
-# p <- ggplot(pdatauniy, aes(Category, x)) + 
-# geom_bar(stat="identity",position=position_dodge())+
-# theme(legend.text=element_text(size=12))
-# basesize <- 12
-# p <- p + theme_bw(base_size = basesize * 0.8) +
-# scale_x_discrete(name="DNA binding domain") + 
-# scale_y_continuous(name="# of splicing events", limits=c(0,max(pdatauniy$x)+40)) +
-# geom_text(aes(label=x), position=position_dodge(width=0.9),hjust=0, vjust=0, angle=75, size=3)+
-# theme(axis.text.x = element_text(size = basesize * 0.6, angle = 60, hjust = 1,vjust=1, colour = "black"),
-# axis.text.y = element_text(size = basesize * 0.6, angle = 0, hjust = 0.5,vjust=0.5, colour = "black"), 
-# panel.grid.major = element_blank(),panel.grid.minor = element_blank(), 
-# strip.text = element_text(size = basesize * 0.8), axis.title=element_text(basesize * 0.8))+
-# guides(fill='none')
-# ggsave(p,filename=paste0(save_dir,"/DBDs_affected.png"),width=7, height=4, dpi=400)
-
-
 
 pdatagh <- data.frame(matrix(ncol=3, nrow=0))
 for(k in 1:length(all_cancer)){
@@ -762,12 +731,6 @@ for(k in 1:length(all_cancer)){
     pdataux$CANCER <- rep(all_cancer[k], length(pdataux[[1]]))
     pdatagh <- rbind(pdatagh, pdataux)
 }
-
-
-# ##make the group "others (29)"
-# wh <- which(pdatagh$x %in% pdata1$x)
-# whe <- setdiff(seq(1,length(pdatagh[[1]])), wh)
-# pdatagh$x[whe] <- paste0('Others (', length(pdata2[[1]]), ')')
 
 
 ##-- add number of unique splicing events ---
@@ -811,27 +774,28 @@ for(k in 1:length(all_cancerx)){
 }
 pdatat <- data.frame(CANCER=tcancer, ED=tdbd, FRAC=tfrac)
 pdatat$bval <- ifelse(pdatat$FRAC < 10, pdatat$FRAC, '>=10')
-# pdatat$DBD <- factor(pdatat$DBD, levels=pdatax$x)
 
+pdatat$bval <- as.factor(pdatat$bval)
+pdatat$bval <- factor(pdatat$bval, levels = c( 0, 1, 2, 3, 4, 5, 6, 7, 8, 9,'>=10'))
 
-cols <- c('#800026','#000000','#ffffff','#ffffcc','#ffeda0','#fed976','#feb24c','#fd8d3c','#fc4e2a','#e31a1c','#bd0026')
-# c('#08306b', '#6baed6','#deebf7', '#ffffcc','#fed976','#fd8d3c','#e31a1c','#800026')#'#2171b5', 
-# cols <- rev(brewer.pal(11,"Spectral"))
+cols <- c('#ffffff','#ffffcc','#fff7bc','#fee391','#fec44f','#fe9929','#ec7014','#cc4c02','#993404','#662506','#000000')
+
 basesize <- 8
 p <- ggplot(pdatat, aes(ED, CANCER)) + geom_tile(aes(fill = bval), color='black')+scale_fill_manual(values=cols)
   # scale_fill_gradientn(colors=cols)
 p <- p + theme_grey(base_size = basesize) + labs(x = "Sample", y = "Gene") +
   scale_y_discrete(name="Cancer type") +
   scale_x_discrete(name="DNA binding domain") +
-  guides(fill=guide_legend(title="# of PTSEs", size=10, ncol=2, override.aes = list(size = 2)))+
+  guides(fill=guide_legend(title="# of PTSEs", ncol=1))+
   theme(axis.text.x = element_text(size = basesize * 1,angle = 60, hjust = 1,vjust=1, colour = "black"), 
                          axis.text.y = element_text(size = basesize * 1, colour='black'), 
                          panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
         axis.title.x = element_text(size=basesize*1),axis.title.y = element_text(size=basesize*1), 
         plot.title = element_text(size=basesize*1), strip.text.x = element_text(size = basesize * 1, colour = "black", angle = 0), 
         strip.text.y = element_text(size = basesize * 1, colour = "black", angle = 0), 
-        legend.text=element_text(size=10))
-ggsave(p,filename=paste0(save_dir,'/Perturbed_EDs_tile.png'),width=3.5, height=4, dpi=500)
+        legend.text=element_text(size=basesize), legend.key.height= unit(0.25, 'cm'),
+    legend.key.width= unit(0.25, 'cm'))
+ggsave(p,filename=paste0(save_dir,'/Perturbed_EDs_tile.png'),width=4.5, height=4, dpi=500)
 
 
 ##--- hypergeometruc test for each ED type ---------
@@ -876,10 +840,6 @@ for(k in 1:length(pdatamul[[1]])){
 pdatauni <- unique(pdatauni)
 pdataunix <- plyr::count(pdatauni$ED)
 pdatauniy <- pdataunix
-# wh <- which(pdataunix$x %in% pdata1$x)
-# whe <- setdiff(seq(1,length(pdataunix[[1]])), wh)
-# pdataunix$x[whe] <- paste0('Others (', length(pdata2[[1]]), ')')
-# pdatauniy <- aggregate(pdataunix$freq, by=list(Category=pdataunix$x), FUN=sum)
 
 pdatax1 <- pdata
 pdatauniy1 <- pdatauniy
@@ -897,7 +857,7 @@ cols <- c('#a6cee3','#1f78b4','#b2df8a','#33a02c','#fb9a99','#e31a1c','#fdbf6f',
 p <- ggplot(alldata, aes(FLAG, frac, fill=x)) + 
 geom_bar(stat="identity",position='stack', color='black')+
 theme(legend.text=element_text(size=12))
-basesize <- 10
+basesize <- 8
 p <- p + theme_bw() +
 scale_x_discrete(name="") + 
 scale_y_continuous(name="% of occurence/perturbation") +
@@ -909,30 +869,33 @@ scale_fill_manual(values=cols)+
         axis.title.x = element_text(size=basesize*1.2),axis.title.y = element_text(size=basesize*1.2), 
         plot.title = element_text(size=basesize*1), strip.text.x = element_text(size = basesize * 1, colour = "black", angle = 0), 
         strip.text.y = element_text(size = basesize * 1, colour = "black", angle = 0), 
-        legend.text=element_text(size=basesize), legend.title=element_text(size=basesize*1.2))+
+        legend.text=element_text(size=basesize), legend.title=element_text(size=basesize*1), legend.key.height= unit(0.25, 'cm'),
+    legend.key.width= unit(0.25, 'cm'))+
 guides(fill=guide_legend(title="Effector domain type"),ncol=2)
-ggsave(p,filename=paste0(save_dir,"/EDs_affected_frac.png"),width=3.5, height=5, dpi=500)
+ggsave(p,filename=paste0(save_dir,"/EDs_affected_frac.png"),width=2.5, height=4, dpi=500)
+
+
 
 
 #####------ overlap between TFs with DBD perturbations and TFs with ED perturbations-----
-perturbed_tfs <- 'results_rep/TF_splicing/Supplementary_file_S1.xlsx'
-perturbed_tfs_DBD <- 'results_rep/TF_DBD/Supplementary_file_S4.xlsx'
-perturbed_tfs_ED <- 'results_rep/TF_ED/Supplementary_file_S5.xlsx'
+perturbed_tfs <- 'results_rep/TF_splicing/Supplementary_Table_S1.xlsx'
+perturbed_tfs_DBD <- 'results_rep/TF_DBD/Supplementary_Table_S4.xlsx'
+perturbed_tfs_ED <- 'results_rep/TF_ED/Supplementary_Table_S5.xlsx'
 temp_dbd <- c()
 temp_ed <- c()
 temp_all <- c()
-for(k in 1:length(all_cancer)){
-    tdbd <- openxlsx::read.xlsx(perturbed_tfs_DBD, k)$AS_ID
-    ted <- openxlsx::read.xlsx(perturbed_tfs_ED, k)$AS_ID
-    if(k < 4){
-        temps <- openxlsx::read.xlsx(perturbed_tfs, k)
-    }else{
-        temps <- openxlsx::read.xlsx(perturbed_tfs, k+1)
-    }
-    temp_all <- union(temp_all, temps$SYMBOL)
-    temp_dbd <- union(temp_dbd, temps[temps$AS_ID %in% tdbd, ]$SYMBOL)
-    temp_ed <- union(temp_ed, temps[temps$AS_ID %in% ted, ]$SYMBOL)
+loop <- length(all_cancer)+1
+for(k in 2:loop){
+    temp_dbd <- union(temp_dbd, openxlsx::read.xlsx(perturbed_tfs_DBD, k)$SYMBOL)
+    temp_ed <- union(temp_ed, openxlsx::read.xlsx(perturbed_tfs_ED, k)$SYMBOL)
 }
+
+loop <- length(all_cancer)+2
+for(k in 2:loop){
+    temps <- openxlsx::read.xlsx(perturbed_tfs, k)
+    temp_all <- union(temp_all, temps$SYMBOL)
+}
+
 
 
 ###---- plot for splicing events perturbing DBD, ED, both of DBD and ED, and none of DBD or ED -----------------
@@ -947,27 +910,25 @@ pdata <- data.frame(Type=c('DBD', 'ED', 'DBD and ED','Other'),
     )
 
 pdata$count <- (pdata$countx/sum(pdata$countx))*100
-# pdata$count <- pdata$countx
-library(scales)
-library(ggrepel)
-# library(tidyverse)
 
-pdata$count <- signif(pdata$count, 3)
-df2 <- pdata %>% 
-  mutate(csum = rev(cumsum(rev(count))), 
-         pos = count/2 + lead(csum, 1),
-         pos = if_else(is.na(pos), count/2, pos))
 
-p <- ggplot(pdata, aes(x = "" , y = count, fill = fct_inorder(Type))) +
-  geom_col(width = 1, color = 1) +
+
+p <- ggplot(pdata, aes(x = "", y = countx, fill = Type)) +
+  geom_col(color = "black") +
+  geom_text(aes(label = countx),
+            position = position_stack(vjust = 0.5)) +
   coord_polar(theta = "y") +
-  scale_fill_brewer(palette = "Set1") +
-  geom_label_repel(data = df2,
-                   aes(y = pos, label = paste0(countx)),
-                   size = 4.5, nudge_x = 1, show.legend = FALSE) +
-  guides(fill = guide_legend(title = "# of PTSE \naffected TFs"))+theme_void() +theme(legend.position='bottom')
-
-ggsave(p,filename=paste0(save_dir,"/Pi_chart.png"),width=4, height=4, dpi=400)
+  # scale_fill_brewer() +
+  theme(axis.text = element_blank(),
+        axis.ticks = element_blank(),
+        axis.title = element_blank(),
+        panel.grid = element_blank(),
+        panel.background = element_rect(fill = "#ffffff"),
+        plot.background = element_rect(fill = "#ffffff"),
+        legend.background = element_rect(fill = "#ffffff"),
+        legend.position='bottom')+
+  guides(fill = guide_legend(title = "# of PTSE \naffected TFs"))
+ggsave(p,filename=paste0(save_dir,"/Pi_chart.png"),width=5, height=4, dpi=400)
 
 #########--------------------------------------------------------------------------------
 

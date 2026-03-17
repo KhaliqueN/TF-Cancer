@@ -5,6 +5,7 @@ library(data.table)
 library(ggplot2)
 library(GenomicDataCommons)
 library(pheatmap)
+library(ggrepel)
 library(dplyr)
 
 save_dir <- 'results_rep/TF_splicing'
@@ -49,6 +50,7 @@ wb1 <- openxlsx::createWorkbook(paste0(save_dir,'/Supplementary_Table_S1.xlsx'))
 ##--- column name explanations --
 tdatat <- data.frame(`Table fields explanation`=c('SYMBOL: HGNC gene symbol',
    'AS_ID: Alternative splicing ID provided by TCGA SpliceSeq',
+   'AS_TYPE: Type of alternative splicing',
    'P_VALUE: wilcoxon signed-rank test p-value for comparison of PSI values of the concerned 
    splicing event in paired samples of the concerned cancer type',
    'FDR: Benjamini Hochberg correction of the P_VALUES for all splicing events tested',
@@ -143,6 +145,7 @@ ggsave(p,filename=paste0(save_dir,"/Sig_events_TFs.png"),width=3.5, height=2.8, 
 
 # ##------------------------------------------------------------------------------
 
+
 ##--- plot the number of splicing events of different types affecting TFs -----------------
 pData <- data.frame(A=AA, B=AD, C=AP, D=AT, E=ES, F=ME, G=RI, X=lengths(events_tf), Cancer=all_cancer)
 pData <- pData[pData$Cancer != 'ESCA', ]
@@ -165,6 +168,10 @@ theme_classic()+theme(axis.text.x = element_text(size = 1*basesize, angle = 60, 
 guides(fill=guide_legend(title="Type of\nalternative\nsplicing event", ncol=1))
 ggsave(ppx,filename=paste0(save_dir, "/Sig_events_types_TFs.png"),width=3, height=3.2, dpi=600)
 
+
+## number of TFs --
+# num_tfs_all <- unique(unlist(num_TFs))
+# num_tfs_all <- unique(unlist(num_sig_events_tfs))
 
 # ###------------------------- Correlation with number of mutated splicing factors with a mutation rate of atleast 1% -----
 # ## Splicing factor mutation rate data from this study (Table S1): Somatic Mutational Landscape of Splicing Factor Genes and Their Functional Consequences across 33 Cancer Types ----
@@ -289,7 +296,7 @@ axis.text.y = element_text(size = basesize*1, angle = 0, hjust = 0.5,vjust=0.5, 
 panel.grid.major = element_blank(),panel.grid.minor = element_blank(),
 strip.text = element_text(size = basesize*1), axis.title=element_text(size=basesize*1), legend.position="right", 
 legend.text=element_text(size=basesize*1), legend.title=element_text(size=basesize*1))+
-guides(color=guide_legend(title="Cancer type", ncol=2, override.aes = list(size = 3)))
+guides(color=guide_legend(title="Cancer type", ncol=2, override.aes = list(size = 2)))
 ggsave(p,filename=paste0(save_dir,"/tSNE.png"),width=3.5, height=3.2, dpi=500)
 
 
@@ -516,7 +523,7 @@ ggsave(p,filename=paste0(save_dir, "/Pancancer_events.png"),width=3.4, height=2,
 
 saveRDS(num_events_combs, file = "data/overlapping_events.rds")
 
-##--------------------------------------------------------------------------------
+##-------------------------------------------------------------------------------
 
 
 ##----- unique splicing events -----------------------------------------------------
@@ -606,7 +613,7 @@ axis.text.y = element_text(size = basesize, angle = 0, hjust = 0.5,vjust=0.5, co
 panel.grid.major = element_blank(),panel.grid.minor = element_blank(),  
 strip.text = element_text(size = basesize), axis.title=element_text(size=basesize), legend.position=c(0.8,0.86))+
 guides(fill=guide_legend(title="Survival associated",ncol=2))
-ggsave(p,filename=paste0(save_dir,"/Sig_events_unique.png"),width=3.5, height=2.5, dpi=500)
+ggsave(p,filename=paste0(save_dir,"/Sig_events_unique.png"),width=3.5, height=3, dpi=500)
 
 
 ##--- save excel file ---
@@ -622,6 +629,7 @@ openxlsx::writeData(wb1, sheet = 'INDEX', tdatat)
 openxlsx::saveWorkbook(wb1, paste0(save_dir,'/Supplementary_Table_S3.xlsx'), overwrite = T)
 
 
+temp_uq <- list()
 for(k in 1:length(all_cancer)){
 
     temp1 <- splicing[splicing$Cancer_Type == all_cancer[k], ]
@@ -638,10 +646,99 @@ for(k in 1:length(all_cancer)){
     }
 
     tdatax <- data.frame(AS_ID=num_events_unq[[k]], CI_Type=citype, Hazard_Ratio=surv)
+    temp_uq[[k]] <- tdatax
     openxlsx::addWorksheet(wb1, sheetName = all_cancer[k])
     openxlsx::writeData(wb1, sheet = all_cancer[k], tdatax)
     openxlsx::saveWorkbook(wb1, paste0(save_dir,'/Supplementary_Table_S3.xlsx'), overwrite = T)
 
 }
+
+
+##-- plot of unique splicing event hazard ratio and delta PSI values -----------
+perturbed_tfs <- 'results_rep/TF_splicing/Supplementary_Table_S1.xlsx'
+pdata <- data.frame(matrix(ncol=0,nrow=0))
+
+for(k in 1:length(all_cancer)){
+    kk <- k+1
+    temp <- temp_uq[[k]]
+    temp1_c <- temp[!is.na(temp$Hazard_Ratio), ]
+
+    wh <- which(temp1_c[[2]] %like% ';')
+    if(length(wh) != 0){
+        temp1_c1 <- temp1_c[wh,]
+        temp1_c2 <- temp1_c[-wh,]
+        for(i in 1:length(temp1_c1[[1]])){
+            tempv <- unlist(strsplit(temp1_c1[[2]][i], '[;]'))
+            tempvv <- unlist(strsplit(temp1_c1[[3]][i], '[;]'))
+            for(j in 1:length(tempv)){
+                temp1_c2 <- rbind(temp1_c2, data.frame(AS_ID=temp1_c1$AS_ID[i], CI_Type=tempv[j], Hazard_Ratio=tempvv[j]))
+            }
+        }
+    }else{
+        temp1_c2 <- temp1_c
+    }
+
+    if(k < 4){
+        tpsi <- openxlsx::read.xlsx(perturbed_tfs, kk)
+    }else{
+        tpsi <- openxlsx::read.xlsx(perturbed_tfs, kk+1)
+    }
+
+
+    pval <- c()
+    gname <- c()
+    ast <- c()
+    as <- c()
+    for(j in 1:length(temp1_c2[[1]])){
+        pval <- c(pval, tpsi[tpsi$AS_ID == temp1_c2$AS_ID[j], ]$MEAN_DIFF)
+        gname <- c(gname, tpsi[tpsi$AS_ID == temp1_c2$AS_ID[j], ]$SYMBOL)
+        ast <- c(ast, tpsi[tpsi$AS_ID == temp1_c2$AS_ID[j], ]$AS_TYPE)
+        as <- c(as, temp1_c2$AS_ID[j])
+    }
+
+    idd <- paste0(gname, '_', as, '_', ast)
+    temp1_c2$MEAN_DIFF <- pval
+    temp1_c2$CANCER <- rep(all_cancer[k], length(temp1_c2[[1]]))
+    temp1_c2$ID <- idd
+    pdata <- rbind(pdata, temp1_c2)
+    
+}
+
+# whx <- which(abs(pdata$MEAN_DIFF) == max(abs(pdata$MEAN_DIFF)))
+# whx <- which(abs(pdata$MEAN_DIFF) > 0.3)
+pdata$IDD <- paste0(pdata$ID, '\n(',pdata$CI_Type, ')')
+pdata$PL <- ""
+pdata$PL[c(2, 117, 120, 200)] <- pdata$IDD[c(2, 117, 120, 200)]
+
+pdata$Hazard_Ratio <- as.numeric(pdata$Hazard_Ratio)
+pdata$MEAN_DIFF <- as.numeric(pdata$MEAN_DIFF)
+
+pdata1 <- pdata[pdata$Hazard_Ratio < 3, ] ## filter outliers
+
+p <- ggplot(pdata1, aes(Hazard_Ratio, MEAN_DIFF, color=CANCER, label=PL)) + 
+# p <- ggplot(pdata, aes(AA, MEAN_DIFF, color=CANCER)) + 
+geom_point()+
+theme(legend.text=element_text(size=12))
+basesize <- 8
+p <- p + 
+scale_x_continuous(name="Hazard ratio") + 
+scale_y_continuous(name="Mean \u0394PSI", limits=c(-0.8, 0.8)) +
+scale_color_manual(values=c('#a6cee3','#1f78b4','#b2df8a','#fb9a99','#ffff99',
+    '#fdbf6f','#ff7f00','#cab2d6','#6a3d9a','#e31a1c','#b15928','black','#9e0142','#053061'))+
+geom_text_repel(family = "Poppins",
+    max.overlaps=Inf,
+                      size = 2.4,
+                      color='black',
+                      arrow = arrow(length = unit(0.010, "npc")),
+                      min.segment.length = 0) +
+theme_classic()+theme(axis.text.x = element_text(size = 1*basesize, angle = 60, vjust=1, hjust=1, colour = "black"),
+    axis.text.y = element_text(size = 1*basesize, angle = 0, colour = "black"),
+    panel.grid.major = element_blank(),panel.grid.minor = element_blank(),
+    axis.line = element_line(colour = "black"),axis.title=element_text(size=basesize),
+    legend.text=element_text(size=basesize), legend.title=element_text(size=basesize),
+    panel.border = element_blank())+
+# guides(color='none')
+guides(color=guide_legend(title="Cancer type", ncol=2, override.aes = list(size = 2)))
+ggsave(p,filename=paste0(save_dir,"/Unique_HR.png"),width=5.5, height=2.8, dpi=500)
 
 
